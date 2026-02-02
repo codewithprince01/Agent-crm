@@ -1,26 +1,6 @@
 import apiClient from './apiClient';
 
 export const dashboardService = {
-  // Get dashboard stats
-  getStats: async () => {
-    const response = await apiClient.get('/dashboard/stats');
-    return response.data;
-  },
-
-  // Get recent applications
-  getRecentApplications: async () => {
-    const response = await apiClient.get('/dashboard/recent-applications');
-    return response.data;
-  },
-
-  // Get chart data
-  getChartData: async (type, period = '30d') => {
-    const response = await apiClient.get(`/dashboard/charts/${type}`, {
-      params: { period },
-    });
-    return response.data;
-  },
-
   // Get admin dashboard
   getAdminDashboard: async () => {
     const response = await apiClient.get('/dashboard/admin');
@@ -28,16 +8,27 @@ export const dashboardService = {
   },
 
   // Get agent dashboard
-  getAgentDashboard: async (agentId) => {
-    const response = await apiClient.get(`/dashboard/agent/${agentId}`);
+  getAgentDashboard: async () => {
+    const response = await apiClient.get('/dashboard/agent');
     return response.data;
   },
 
   // Get student dashboard
-  getStudentDashboard: async (studentId) => {
-    const response = await apiClient.get(`/dashboard/student/${studentId}`);
+  getStudentDashboard: async () => {
+    const response = await apiClient.get('/dashboard/student');
     return response.data;
   },
+
+  // Helper to route to correct dashboard based on role
+  getDashboardData: async (role) => {
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+      return dashboardService.getAdminDashboard();
+    } else if (role === 'AGENT') {
+      return dashboardService.getAgentDashboard();
+    } else if (role === 'STUDENT') {
+      return dashboardService.getStudentDashboard();
+    }
+  }
 };
 
 export default dashboardService;

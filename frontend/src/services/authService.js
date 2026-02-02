@@ -9,13 +9,13 @@ export const authService = {
 
   // Register Agent
   registerAgent: async (data) => {
-    const response = await apiClient.post('/auth/register/agent', data);
+    const response = await apiClient.post('/auth/register-agent', data);
     return response.data;
   },
 
   // Register Student
   registerStudent: async (data) => {
-    const response = await apiClient.post('/auth/register/student', data);
+    const response = await apiClient.post('/auth/register-student', data);
     return response.data;
   },
 

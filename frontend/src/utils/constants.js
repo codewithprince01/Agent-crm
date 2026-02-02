@@ -65,7 +65,7 @@ export const AGENT_STATUS_COLORS = {
 
 // Payout Status
 export const PAYOUT_STATUS = {
-  PENDING: 'pending',
+  REQUESTED: 'requested',
   APPROVED: 'approved',
   REJECTED: 'rejected',
   PAID: 'paid',
@@ -73,7 +73,7 @@ export const PAYOUT_STATUS = {
 
 // Payout Status Labels
 export const PAYOUT_STATUS_LABELS = {
-  [PAYOUT_STATUS.PENDING]: 'Pending',
+  [PAYOUT_STATUS.REQUESTED]: 'Requested',
   [PAYOUT_STATUS.APPROVED]: 'Approved',
   [PAYOUT_STATUS.REJECTED]: 'Rejected',
   [PAYOUT_STATUS.PAID]: 'Paid',
@@ -81,7 +81,7 @@ export const PAYOUT_STATUS_LABELS = {
 
 // Payout Status Colors
 export const PAYOUT_STATUS_COLORS = {
-  [PAYOUT_STATUS.PENDING]: 'bg-amber-100 text-amber-800',
+  [PAYOUT_STATUS.REQUESTED]: 'bg-amber-100 text-amber-800',
   [PAYOUT_STATUS.APPROVED]: 'bg-green-100 text-green-800',
   [PAYOUT_STATUS.REJECTED]: 'bg-red-100 text-red-800',
   [PAYOUT_STATUS.PAID]: 'bg-blue-100 text-blue-800',
@@ -89,18 +89,22 @@ export const PAYOUT_STATUS_COLORS = {
 
 // Course Levels
 export const COURSE_LEVELS = {
-  UG: 'undergraduate',
-  PG: 'postgraduate',
-  DIPLOMA: 'diploma',
-  CERTIFICATE: 'certificate',
+  FOUNDATION: 'Foundation',
+  UNDERGRADUATE: 'Undergraduate',
+  POSTGRADUATE: 'Postgraduate',
+  DIPLOMA: 'Diploma',
+  CERTIFICATE: 'Certificate',
+  PHD: 'PhD',
 };
 
 // Course Level Labels
 export const COURSE_LEVEL_LABELS = {
-  [COURSE_LEVELS.UG]: 'Undergraduate',
-  [COURSE_LEVELS.PG]: 'Postgraduate',
+  [COURSE_LEVELS.FOUNDATION]: 'Foundation',
+  [COURSE_LEVELS.UNDERGRADUATE]: 'Undergraduate',
+  [COURSE_LEVELS.POSTGRADUATE]: 'Postgraduate',
   [COURSE_LEVELS.DIPLOMA]: 'Diploma',
   [COURSE_LEVELS.CERTIFICATE]: 'Certificate',
+  [COURSE_LEVELS.PHD]: 'PhD',
 };
 
 // Commission Types

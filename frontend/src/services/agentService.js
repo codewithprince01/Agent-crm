@@ -39,13 +39,13 @@ export const agentService = {
 
   // Approve agent
   approveAgent: async (id, data) => {
-    const response = await apiClient.post(`/agents/${id}/approve`, data);
+    const response = await apiClient.put(`/agents/${id}/approve`, data);
     return response.data;
   },
 
   // Reject agent
   rejectAgent: async (id, data) => {
-    const response = await apiClient.post(`/agents/${id}/reject`, data);
+    const response = await apiClient.put(`/agents/${id}/reject`, data);
     return response.data;
   },
 

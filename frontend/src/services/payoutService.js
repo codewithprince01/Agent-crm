@@ -7,16 +7,9 @@ export const payoutService = {
     return response.data;
   },
 
-  // Get payout requests
+  // Get payout requests (Using filter)
   getPayoutRequests: async () => {
-    const response = await apiClient.get('/payouts/requests');
-    return response.data;
-  },
-
-  // Get payout by ID
-  getPayoutById: async (id) => {
-    const response = await apiClient.get(`/payouts/${id}`);
-    return response.data;
+    return payoutService.getPayouts({ status: 'requested' });
   },
 
   // Request payout
@@ -27,25 +20,25 @@ export const payoutService = {
 
   // Approve payout
   approvePayout: async (id, paymentReference) => {
-    const response = await apiClient.post(`/payouts/${id}/approve`, { paymentReference });
+    const response = await apiClient.put(`/payouts/${id}/approve`, { payment_reference: paymentReference });
     return response.data;
   },
 
   // Reject payout
   rejectPayout: async (id, reason) => {
-    const response = await apiClient.post(`/payouts/${id}/reject`, { reason });
+    const response = await apiClient.put(`/payouts/${id}/reject`, { notes: reason });
+    return response.data;
+  },
+
+  // Mark as paid
+  markAsPaid: async (id, paymentReference) => {
+    const response = await apiClient.put(`/payouts/${id}/mark-paid`, { payment_reference: paymentReference });
     return response.data;
   },
 
   // Get agent earnings
   getAgentEarnings: async (agentId) => {
-    const response = await apiClient.get(`/payouts/earnings/${agentId}`);
-    return response.data;
-  },
-
-  // Get payout history
-  getPayoutHistory: async (agentId) => {
-    const response = await apiClient.get(`/payouts/history/${agentId}`);
+    const response = await apiClient.get('/payouts/earnings', { params: { agent_id: agentId } });
     return response.data;
   },
 };

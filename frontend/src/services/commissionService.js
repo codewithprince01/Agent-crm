@@ -7,52 +7,39 @@ export const commissionService = {
     return response.data;
   },
 
-  // Get commission by ID
-  getCommissionById: async (id) => {
-    const response = await apiClient.get(`/commissions/${id}`);
+  // Get commission rules
+  getRules: async (params = {}) => {
+    const response = await apiClient.get('/commissions/rules', { params });
     return response.data;
   },
 
-  // Create commission
-  createCommission: async (data) => {
-    const response = await apiClient.post('/commissions', data);
+  // Create commission rule
+  createRule: async (data) => {
+    const response = await apiClient.post('/commissions/rules', data);
     return response.data;
   },
 
-  // Update commission
-  updateCommission: async (id, data) => {
-    const response = await apiClient.put(`/commissions/${id}`, data);
+  // Update commission rule
+  updateRule: async (id, data) => {
+    const response = await apiClient.put(`/commissions/rules/${id}`, data);
     return response.data;
   },
 
-  // Delete commission
-  deleteCommission: async (id) => {
-    const response = await apiClient.delete(`/commissions/${id}`);
+  // Delete commission rule
+  deleteRule: async (id) => {
+    const response = await apiClient.delete(`/commissions/rules/${id}`);
     return response.data;
   },
 
-  // Calculate commission
-  calculateCommission: async (data) => {
-    const response = await apiClient.post('/commissions/calculate', data);
+  // Approve commission
+  approveCommission: async (id) => {
+    const response = await apiClient.put(`/commissions/${id}/approve`);
     return response.data;
   },
 
-  // Get agent commissions
+  // Get agent commissions (Helper using main list)
   getAgentCommissions: async (agentId) => {
-    const response = await apiClient.get(`/commissions/agent/${agentId}`);
-    return response.data;
-  },
-
-  // Get university commissions
-  getUniversityCommissions: async (universityId) => {
-    const response = await apiClient.get(`/commissions/university/${universityId}`);
-    return response.data;
-  },
-
-  // Get course commissions
-  getCourseCommissions: async (courseId) => {
-    const response = await apiClient.get(`/commissions/course/${courseId}`);
-    return response.data;
+    return commissionService.getCommissions({ agent_id: agentId });
   },
 };
 

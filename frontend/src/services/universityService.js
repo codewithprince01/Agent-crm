@@ -31,27 +31,28 @@ export const universityService = {
     return response.data;
   },
 
-  // Upload logo
-  uploadLogo: async (id, formData) => {
-    const response = await apiClient.post(`/universities/${id}/logo`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
+  // Upload logo (Not implemented in backend yet)
+  // uploadLogo: async (id, formData) => {
+  //   const response = await apiClient.post(`/universities/${id}/logo`, formData, {
+  //     headers: {
+  //       'Content-Type': 'multipart/form-data',
+  //     },
+  //   });
+  //   return response.data;
+  // },
 
   // Get university courses
   getUniversityCourses: async (id) => {
-    const response = await apiClient.get(`/universities/${id}/courses`);
+    // Use the courses endpoint with filter
+    const response = await apiClient.get(`/courses`, { params: { university_id: id } });
     return response.data;
   },
 
-  // Update status
-  updateStatus: async (id, status) => {
-    const response = await apiClient.put(`/universities/${id}/status`, { status });
-    return response.data;
-  },
+  // Update status (Not implemented as separate route in backend)
+  // updateStatus: async (id, status) => {
+  //   const response = await apiClient.put(`/universities/${id}/status`, { status });
+  //   return response.data;
+  // },
 };
 
 export default universityService;

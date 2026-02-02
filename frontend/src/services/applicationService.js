@@ -33,13 +33,12 @@ export const applicationService = {
 
   // Submit application
   submitApplication: async (id) => {
-    const response = await apiClient.post(`/applications/${id}/submit`);
-    return response.data;
+    return applicationService.updateStatus(id, 'submitted', 'Application submitted');
   },
 
   // Update status
-  updateStatus: async (id, status, note) => {
-    const response = await apiClient.put(`/applications/${id}/status`, { status, note });
+  updateStatus: async (id, status, notes) => {
+    const response = await apiClient.put(`/applications/${id}/status`, { status, notes });
     return response.data;
   },
 
@@ -67,14 +66,12 @@ export const applicationService = {
 
   // Accept offer
   acceptOffer: async (id) => {
-    const response = await apiClient.post(`/applications/${id}/accept-offer`);
-    return response.data;
+    return applicationService.updateStatus(id, 'offer_accepted', 'Offer accepted by student');
   },
 
   // Mark fee paid
   markFeePaid: async (id, paymentDetails) => {
-    const response = await apiClient.post(`/applications/${id}/fee-paid`, paymentDetails);
-    return response.data;
+    return applicationService.updateStatus(id, 'fee_paid', `Fee paid. Ref: ${paymentDetails?.reference || 'N/A'}`);
   },
 
   // Get status counts

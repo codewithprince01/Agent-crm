@@ -25,11 +25,11 @@ export const studentService = {
     return response.data;
   },
 
-  // Delete student
-  deleteStudent: async (id) => {
-    const response = await apiClient.delete(`/students/${id}`);
-    return response.data;
-  },
+  // Delete student (Not implemented in backend)
+  // deleteStudent: async (id) => {
+  //   const response = await apiClient.delete(`/students/${id}`);
+  //   return response.data;
+  // },
 
   // Upload document
   uploadDocument: async (id, formData) => {
@@ -41,22 +41,20 @@ export const studentService = {
     return response.data;
   },
 
-  // Get student applications
+  // Get student applications (Using filter on applications endpoint)
   getStudentApplications: async (id) => {
-    const response = await apiClient.get(`/students/${id}/applications`);
+    const response = await apiClient.get(`/applications`, { params: { student_id: id } });
     return response.data;
   },
 
-  // Update academic details
+  // Update academic details (Use main update)
   updateAcademicDetails: async (id, data) => {
-    const response = await apiClient.put(`/students/${id}/academic`, data);
-    return response.data;
+    return studentService.updateStudent(id, data);
   },
 
-  // Update passport info
+  // Update passport info (Use main update)
   updatePassportInfo: async (id, data) => {
-    const response = await apiClient.put(`/students/${id}/passport`, data);
-    return response.data;
+    return studentService.updateStudent(id, data);
   },
 };
 
