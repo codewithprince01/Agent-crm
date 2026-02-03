@@ -14,6 +14,7 @@ class AuthController {
   static async login(req, res) {
     try {
       const { email, password, role } = req.body;
+      console.log(`Login attempt for: ${email}, requested role: ${role}`); // DEBUG LOG
 
       // Find user
       const user = await User.findOne({
@@ -33,11 +34,14 @@ class AuthController {
       });
 
       if (!user) {
+        console.log('User not found in DB'); // DEBUG LOG
         return ResponseHandler.unauthorized(res, 'Invalid credentials');
       }
+      console.log(`User found: ${user.email}, Role in DB: ${user.role}`); // DEBUG LOG
 
       // Validate role matches (if role is provided)
       if (role && user.role !== role) {
+        console.log(`Role mismatch! Requested: ${role}, Actual: ${user.role}`); // DEBUG LOG
         return ResponseHandler.forbidden(
           res,
           `You are not authorized to login as ${role}. Your account role is ${user.role}.`
@@ -47,6 +51,7 @@ class AuthController {
       // Check password
       const isPasswordValid = await user.comparePassword(password);
       if (!isPasswordValid) {
+        console.log('Password invalid'); // DEBUG LOG
         return ResponseHandler.unauthorized(res, 'Invalid credentials');
       }
 

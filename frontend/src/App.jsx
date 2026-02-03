@@ -19,6 +19,9 @@ import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import AgentDashboard from "./pages/dashboard/AgentDashboard";
 import StudentDashboard from "./pages/dashboard/StudentDashboard";
 
+// Admin Pages
+import AdminList from "./pages/admins/AdminList";
+
 // Agent Pages
 import AgentList from "./pages/agents/AgentList";
 import AgentDetails from "./pages/agents/AgentDetails";
@@ -91,6 +94,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admins */}
+            <Route
+              path="admins"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+                  <AdminList />
                 </ProtectedRoute>
               }
             />
