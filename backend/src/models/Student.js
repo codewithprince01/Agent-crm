@@ -39,8 +39,22 @@ const studentSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: false // Not required for drafts
+    required: false // Not required for drafts or until password is set
   },
+  isPasswordSet: {
+    type: Boolean,
+    default: false
+  },
+
+  // Password Setup (First-time)
+  passwordSetupToken: String,
+  passwordSetupExpires: Date,
+
+  // Password Reset (OTP-based)
+  passwordResetOTP: String,
+  passwordResetOTPExpires: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date,
 
   // Email Verification
   isEmailVerified: {

@@ -28,6 +28,7 @@ const Login = () => {
     { value: ROLES.SUPER_ADMIN, label: "Super Admin" },
     { value: ROLES.ADMIN, label: "Admin" },
     { value: ROLES.AGENT, label: "Agent" },
+    { value: ROLES.STUDENT, label: "Student" },
   ];
 
   const handleChange = (e) => {

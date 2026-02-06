@@ -15,6 +15,10 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import SetupPassword from "./pages/auth/SetupPassword";
 import VerifyOTP from "./pages/auth/VerifyOTP";
+import StudentSetupPassword from "./pages/auth/student/StudentSetupPassword";
+import StudentForgotPassword from "./pages/auth/student/StudentForgotPassword";
+import StudentVerifyOTP from "./pages/auth/student/StudentVerifyOTP";
+import StudentResetPassword from "./pages/auth/student/StudentResetPassword";
 import PartnerApplicationForm from "./pages/public/PartnerApplicationForm";
 
 // Dashboard Pages
@@ -108,6 +112,13 @@ function AppContent() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+      {/* Student Specific Auth Routes */}
+      <Route path="/student/setup-password" element={<StudentSetupPassword />} />
+      <Route path="/student/forgot-password" element={<StudentForgotPassword />} />
+      <Route path="/student/verify-otp" element={<StudentVerifyOTP />} />
+      <Route path="/student/reset-password" element={<StudentResetPassword />} />
+
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Public Student Registration Routes - Requires Valid Referral */}

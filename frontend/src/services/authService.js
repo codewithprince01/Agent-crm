@@ -4,9 +4,13 @@ export const authService = {
   // Login
   login: async (credentials) => {
     // Route to correct endpoint based on role
-    const endpoint = credentials.role === 'AGENT'
-      ? '/auth/agent-login'
-      : '/auth/login';
+    let endpoint = '/auth/login';
+
+    if (credentials.role === 'AGENT') {
+      endpoint = '/auth/agent-login';
+    } else if (credentials.role === 'STUDENT') {
+      endpoint = '/auth/student-login';
+    }
 
     const response = await apiClient.post(endpoint, credentials);
     // Extract data object from response
@@ -73,6 +77,27 @@ export const authService = {
   // Logout
   logout: async () => {
     const response = await apiClient.post('/auth/logout');
+    return response.data.data || response.data;
+  },
+
+  // Student Password Management
+  studentSetupPassword: async (token, password) => {
+    const response = await apiClient.post('/auth/student/setup-password', { token, password });
+    return response.data.data || response.data;
+  },
+
+  studentForgotPassword: async (email) => {
+    const response = await apiClient.post('/auth/student/forgot-password', { email });
+    return response.data.data || response.data;
+  },
+
+  studentVerifyOTP: async (email, otp) => {
+    const response = await apiClient.post('/auth/student/verify-otp', { email, otp });
+    return response.data.data || response.data;
+  },
+
+  studentResetPassword: async (token, password) => {
+    const response = await apiClient.post('/auth/student/reset-password', { token, password });
     return response.data.data || response.data;
   },
 };

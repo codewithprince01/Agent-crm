@@ -338,15 +338,25 @@ exports.completeDraft = async (req, res) => {
             student.studentId = generateStudentId();
         }
 
+        // Generate setup token (expires in 24 hours)
+        const crypto = require('crypto');
+        const setupToken = crypto.randomBytes(32).toString('hex');
+        const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
         // Mark as completed
         student.isCompleted = true;
         student.isDraft = false;
         student.currentStep = 4;
         student.lastSavedStep = 4;
+        student.isPasswordSet = false;
+        student.passwordSetupToken = setupToken;
+        student.passwordSetupExpires = tokenExpires;
 
         await student.save();
 
-        // TODO: Send welcome email
+        // Send welcome email with password setup link
+        const emailService = require('../services/emailService');
+        await emailService.sendStudentWelcomeEmail(student, setupToken);
 
         res.status(200).json({
             success: true,

@@ -266,6 +266,11 @@ class StudentController {
         return `${prefix}${timestamp}${random}`;
       };
 
+      // Generate setup token (expires in 24 hours)
+      const crypto = require('crypto');
+      const setupToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
       // Create student
       const student = new Student({
         studentId: generateStudentId(),
@@ -273,7 +278,10 @@ class StudentController {
         lastName: lastName || name?.split(' ').slice(1).join(' '),
         email: email.toLowerCase(),
         phone,
-        password, // Will be hashed by pre-save hook
+        // System generated students don't have password yet, they set it via link
+        isPasswordSet: false,
+        passwordSetupToken: setupToken,
+        passwordSetupExpires: tokenExpires,
         dateOfBirth,
         gender,
         nationality,
@@ -292,7 +300,11 @@ class StudentController {
 
       await student.save();
 
-      console.log('Student created manually:', student.studentId);
+      // Send welcome email with setup link
+      const emailService = require('../services/emailService');
+      await emailService.sendStudentWelcomeEmail(student, setupToken);
+
+      console.log('Student created manually and welcome email sent:', student.studentId);
 
       return res.status(201).json({
         success: true,
