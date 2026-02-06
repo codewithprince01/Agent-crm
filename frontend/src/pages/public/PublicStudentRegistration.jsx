@@ -133,41 +133,38 @@ const PublicStudentRegistration = () => {
         switch (currentStep) {
             case 1:
                 // Step 1: Personal Information - Required fields
-                if (!formData.firstName || !formData.firstName.trim()) {
-                    toast.error('First Name is required');
-                    return false;
-                }
-                if (!formData.lastName || !formData.lastName.trim()) {
-                    toast.error('Last Name is required');
-                    return false;
-                }
-                if (!formData.email || !formData.email.trim()) {
-                    toast.error('Email Address is required');
-                    return false;
-                }
-                if (!formData.mobile || !formData.mobile.trim()) {
-                    toast.error('Mobile Number is required');
-                    return false;
-                }
-                if (!emailVerified) {
-                    toast.error('Please verify your email address before proceeding');
-                    return false;
-                }
+                if (!formData.firstName || !formData.firstName.trim()) { toast.error('First Name is required'); return false; }
+                if (!formData.lastName || !formData.lastName.trim()) { toast.error('Last Name is required'); return false; }
+                if (!formData.email || !formData.email.trim()) { toast.error('Email Address is required'); return false; }
+                if (!formData.mobile || !formData.mobile.trim()) { toast.error('Mobile Number is required'); return false; }
+                if (!formData.dob) { toast.error('Date of Birth is required'); return false; }
+                if (!formData.nationality) { toast.error('Nationality/Citizenship is required'); return false; }
+                if (!emailVerified) { toast.error('Please verify your email address before proceeding'); return false; }
                 break;
 
             case 2:
-                // Step 2: Education - Add validation as needed
-                // Currently no mandatory fields
+                // Step 2: Education - Mandatory fields
+                if (!formData.education_country) { toast.error('Country of Education is required'); return false; }
+                if (!formData.highest_level) { toast.error('Highest Level of Education is required'); return false; }
+                if (!formData.grading_scheme) { toast.error('Grading Scheme is required'); return false; }
+                if (!formData.grade_average || !formData.grade_average.trim()) { toast.error('Grade Average is required'); return false; }
                 break;
 
             case 3:
-                // Step 3: Test Scores - Add validation as needed
-                // Currently no mandatory fields
+                // Step 3: Test Scores - Mandatory fields
+                if (!formData.exam_type) { toast.error('English Exam Type is required'); return false; }
+                if (!formData.exam_date) { toast.error('Exam Date is required'); return false; }
+                if (!formData.listening_score || !formData.listening_score.trim()) { toast.error('Listening Score is required'); return false; }
+                if (!formData.reading_score || !formData.reading_score.trim()) { toast.error('Reading Score is required'); return false; }
+                if (!formData.writing_score || !formData.writing_score.trim()) { toast.error('Writing Score is required'); return false; }
+                if (!formData.speaking_score || !formData.speaking_score.trim()) { toast.error('Speaking Score is required'); return false; }
+                if (!formData.overall_score || !formData.overall_score.trim()) { toast.error('Overall Score is required'); return false; }
                 break;
 
             case 4:
-                // Step 4: Background - Add validation as needed
-                // Currently no mandatory fields
+                // Step 4: Background - Mandatory fields
+                if (!formData.visa_refusal) { toast.error('Visa Refusal history must be specified'); return false; }
+                if (!formData.study_permit) { toast.error('Study Permit status is required'); return false; }
                 break;
 
             default:
@@ -261,6 +258,11 @@ const PublicStudentRegistration = () => {
 
             if (!tempId) {
                 toast.error('Session expired. Please start again.');
+                return;
+            }
+
+            // Final step validation
+            if (!validateCurrentStep()) {
                 return;
             }
 

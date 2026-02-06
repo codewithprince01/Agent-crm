@@ -137,7 +137,7 @@ const StudentForm = () => {
   const handleSaveStep = async () => {
     // In edit mode, we can optionally save current step, 
     // but for now let's just toast success as placeholder for progress
-    toast.success(`Step ${currentStep} progress saved locally!`);
+    toast.success(`Step ${currentStep} progress saved!`);
   };
 
   const handleNext = async () => {
@@ -207,7 +207,7 @@ const StudentForm = () => {
 
       setTimeout(() => {
         navigate('/students');
-      }, 1000);
+      }, 1500);
     } catch (err) {
       console.error('Submission error:', err);
       toast.error(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} student`);
@@ -259,9 +259,9 @@ const StudentForm = () => {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {isEditMode ? 'Edit Student' : 'Create New Student'}
+              {isEditMode ? 'Edit Student Details' : 'Create New Student'}
             </h1>
-            <p className="text-gray-600 text-sm mt-1">Step {currentStep} of 4 - {steps[currentStep - 1].title}</p>
+            <p className="text-gray-600 text-sm mt-1 font-medium italic">Step {currentStep} of 4 - {steps[currentStep - 1].title}</p>
           </div>
         </div>
       </div>
@@ -306,43 +306,46 @@ const StudentForm = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">First Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="firstName"
+                  placeholder="Enter first name"
                   value={formData.firstName}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="lastName"
+                  placeholder="Enter last name"
                   value={formData.lastName}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address <span className="text-red-500">*</span></label>
                 <input
                   type="email"
                   name="email"
+                  placeholder="student@example.com"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number <span className="text-red-500">*</span></label>
                 <div className="flex">
                   <select
                     name="c_code"
                     value={formData.c_code}
                     onChange={handleChange}
-                    className="border border-gray-300 rounded-l-lg p-3"
+                    className="border border-gray-300 rounded-l-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
                   >
                     {phoneCode.map((code, idx) => (
                       <option key={idx} value={code.phonecode}>+{code.phonecode}</option>
@@ -351,62 +354,194 @@ const StudentForm = () => {
                   <input
                     type="text"
                     name="mobile"
+                    placeholder="Enter mobile number"
                     value={formData.mobile}
                     onChange={handleChange}
-                    className="border-y border-r border-gray-300 rounded-r-lg p-3 w-full"
+                    className="border border-gray-300 rounded-r-lg p-3 w-full focus:ring-2 focus:ring-indigo-500 outline-none transition"
                   />
                 </div>
               </div>
 
-              {/* Referral Display */}
-              <div className="col-span-2 bg-indigo-50 border border-indigo-100 rounded-lg p-4">
-                <label className="text-xs font-bold text-indigo-600 uppercase tracking-wider block mb-1">Referral Tracking</label>
-                <p className="text-sm font-medium text-gray-700">Student is referred by: <span className="text-indigo-700 font-bold">{formData.referredBy || 'Direct'}</span></p>
+              {/* Referral Detail Display */}
+              <div className="col-span-1 md:col-span-2 bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block mb-2">Referral Tracking</label>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-sm font-medium text-gray-600">Student is referred by:</p>
+                      <span className="text-lg font-bold text-indigo-700">{formData.referredBy === (user?.id || user?._id) ? (user?.name || user?.email || 'SELF') : (formData.referredBy || 'Direct')}</span>
+                    </div>
+                    {isEditMode && <p className="text-[10px] text-gray-400 mt-2 font-medium">* Referral source cannot be changed manually after creation</p>}
+                  </div>
+                  <div className="bg-indigo-600 text-white rounded-full px-4 py-1.5 text-xs font-bold shadow-md">
+                    {formData.referredBy === (user?.id || user?._id) ? 'INTERNAL' : 'EXTERNAL'}
+                  </div>
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Father's Name</label>
-                <input type="text" name="father" value={formData.father} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input
+                  type="text"
+                  name="father"
+                  placeholder="Enter father's name"
+                  value={formData.father}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Mother's Name</label>
-                <input type="text" name="mother" value={formData.mother} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input
+                  type="text"
+                  name="mother"
+                  placeholder="Enter mother's name"
+                  value={formData.mother}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input
+                  type="date"
+                  name="dob"
+                  value={formData.dob}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
-                <select name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">First Language</label>
+                <input
+                  type="text"
+                  name="first_language"
+                  placeholder="e.g., English, Hindi"
+                  value={formData.first_language}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Country of Citizenship</label>
+                <select
+                  name="nationality"
+                  value={formData.nationality}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
                   <option value="">Select country</option>
                   {countriesData.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Passport Number</label>
-                <input type="text" name="passport_number" value={formData.passport_number} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3" />
+                <input
+                  type="text"
+                  name="passport_number"
+                  placeholder="Enter passport number"
+                  value={formData.passport_number}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Passport Expiry</label>
-                <input type="date" name="passport_expiry" value={formData.passport_expiry} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3" />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Passport Expiry Date</label>
+                <input
+                  type="date"
+                  name="passport_expiry"
+                  value={formData.passport_expiry}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Marital Status</label>
+                <select
+                  name="marital_status"
+                  value={formData.marital_status}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="Single">Single</option>
+                  <option value="Married">Married</option>
+                  <option value="Divorced">Divorced</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 pt-8 border-t border-gray-100">
               <h3 className="text-xl font-semibold text-indigo-700 mb-4">📍 Address Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="col-span-2">
+                <div className="col-span-1 md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Home Address</label>
-                  <input type="text" name="home_address" value={formData.home_address} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3" />
+                  <input
+                    type="text"
+                    name="home_address"
+                    placeholder="Enter complete address"
+                    value={formData.home_address}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                  />
                 </div>
-                <input type="text" name="city" placeholder="City" value={formData.city} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
-                <input type="text" name="state" placeholder="State/Province" value={formData.state} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
-                <select name="country" value={formData.country} onChange={handleChange} className="border border-gray-300 rounded-lg p-3">
-                  <option value="">Select country</option>
-                  {countriesData.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
-                </select>
-                <input type="text" name="zipcode" placeholder="Zip Code" value={formData.zipcode} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    placeholder="Enter city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">State/Province</label>
+                  <input
+                    type="text"
+                    name="state"
+                    placeholder="Enter state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                  >
+                    <option value="">Select country</option>
+                    {countriesData.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Postal/Zip Code</label>
+                  <input
+                    type="text"
+                    name="zipcode"
+                    placeholder="Enter postal code"
+                    value={formData.zipcode}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -419,22 +554,57 @@ const StudentForm = () => {
               <h3 className="text-2xl font-semibold text-indigo-700">🎓 Education History</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <select name="education_country" value={formData.education_country} onChange={handleChange} className="border border-gray-300 rounded-lg p-3">
-                <option value="">Education Country</option>
-                {countriesData.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
-              </select>
-              <select name="highest_level" value={formData.highest_level} onChange={handleChange} className="border border-gray-300 rounded-lg p-3">
-                <option value="">Highest Level</option>
-                <option>Under-Graduate</option>
-                <option>Post-Graduate</option>
-                <option>Diploma</option>
-              </select>
-              <select name="grading_scheme" value={formData.grading_scheme} onChange={handleChange} className="border border-gray-300 rounded-lg p-3">
-                <option value="">Grading Scheme</option>
-                <option>Percentage</option>
-                <option>CGPA</option>
-              </select>
-              <input type="text" name="grade_average" placeholder="Grade Average" value={formData.grade_average} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Country of Education</label>
+                <select
+                  name="education_country"
+                  value={formData.education_country}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="">Select country</option>
+                  {countriesData.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Highest Level of Education</label>
+                <select
+                  name="highest_level"
+                  value={formData.highest_level}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="">Select level</option>
+                  <option>Under-Graduate</option>
+                  <option>Post-Graduate</option>
+                  <option>Diploma</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Grading Scheme</label>
+                <select
+                  name="grading_scheme"
+                  value={formData.grading_scheme}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="">Select scheme</option>
+                  <option>Percentage</option>
+                  <option>CGPA</option>
+                  <option>GPA</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Grade Average/Score</label>
+                <input
+                  type="text"
+                  name="grade_average"
+                  placeholder="e.g., 85%, 8.5 CGPA"
+                  value={formData.grade_average}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -444,16 +614,86 @@ const StudentForm = () => {
           <div ref={testScoresRef}>
             <h3 className="text-2xl font-semibold text-indigo-700 mb-6">🎯 Test Scores</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <select name="exam_type" value={formData.exam_type} onChange={handleChange} className="border border-gray-300 rounded-lg p-3">
-                <option value="">Exam Type</option>
-                <option>IELTS</option><option>TOEFL</option><option>PTE</option>
-              </select>
-              <input type="date" name="exam_date" value={formData.exam_date} onChange={handleChange} className="border border-gray-300 rounded-lg p-3 col-span-2" />
-              <input type="text" name="listening_score" placeholder="Listening" value={formData.listening_score} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
-              <input type="text" name="reading_score" placeholder="Reading" value={formData.reading_score} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
-              <input type="text" name="writing_score" placeholder="Writing" value={formData.writing_score} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
-              <input type="text" name="speaking_score" placeholder="Speaking" value={formData.speaking_score} onChange={handleChange} className="border border-gray-300 rounded-lg p-3" />
-              <input type="text" name="overall_score" placeholder="Overall Score" value={formData.overall_score} onChange={handleChange} className="border border-gray-300 rounded-lg p-3 col-span-2" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">English Exam Type</label>
+                <select
+                  name="exam_type"
+                  value={formData.exam_type}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="">Select exam</option>
+                  <option>IELTS</option>
+                  <option>TOEFL</option>
+                  <option>PTE</option>
+                  <option>Duolingo</option>
+                </select>
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Exam Date</label>
+                <input
+                  type="date"
+                  name="exam_date"
+                  value={formData.exam_date}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Listening Score</label>
+                <input
+                  type="text"
+                  name="listening_score"
+                  placeholder="0.0"
+                  value={formData.listening_score}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reading Score</label>
+                <input
+                  type="text"
+                  name="reading_score"
+                  placeholder="0.0"
+                  value={formData.reading_score}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Writing Score</label>
+                <input
+                  type="text"
+                  name="writing_score"
+                  placeholder="0.0"
+                  value={formData.writing_score}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Speaking Score</label>
+                <input
+                  type="text"
+                  name="speaking_score"
+                  placeholder="0.0"
+                  value={formData.speaking_score}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Overall Score</label>
+                <input
+                  type="text"
+                  name="overall_score"
+                  placeholder="0.0"
+                  value={formData.overall_score}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -463,40 +703,78 @@ const StudentForm = () => {
           <div ref={backgroundRef}>
             <h3 className="text-2xl font-semibold text-indigo-700 mb-6">📝 Background</h3>
             <div className="space-y-6">
-              <select name="visa_refusal" value={formData.visa_refusal} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3">
-                <option value="">Visa Refusal?</option>
-                <option value="YES">Yes</option><option value="NO">No</option>
-              </select>
-              <select name="study_permit" value={formData.study_permit} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3">
-                <option value="">Valid Study Permit?</option>
-                <option value="YES">Yes</option><option value="NO">No</option>
-              </select>
-              <textarea name="background_details" rows="4" placeholder="Additional Details" value={formData.background_details} onChange={handleChange} className="w-full border border-gray-300 rounded-lg p-3"></textarea>
+              <div>
+                <label className="block font-medium text-gray-700 mb-2">Visa Refusal History?</label>
+                <select
+                  name="visa_refusal"
+                  value={formData.visa_refusal}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="">Select</option>
+                  <option value="YES">Yes</option>
+                  <option value="NO">No</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium text-gray-700 mb-2">Valid Study Permit?</label>
+                <select
+                  name="study_permit"
+                  value={formData.study_permit}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                >
+                  <option value="">Select</option>
+                  <option value="YES">Yes</option>
+                  <option value="NO">No</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium text-gray-700 mb-2">Additional Details</label>
+                <textarea
+                  name="background_details"
+                  rows="4"
+                  placeholder="Any additional information about the student's background..."
+                  value={formData.background_details}
+                  onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                ></textarea>
+              </div>
             </div>
           </div>
         )}
 
         {/* Navigation */}
-        <div className="flex justify-between mt-8 pt-6 border-t font-bold">
+        <div className="flex justify-between mt-8 pt-6 border-t">
           <button
             onClick={handlePrevious}
             disabled={currentStep === 1}
-            className={`px-6 py-3 rounded-lg transition-all ${currentStep === 1 ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-700'}`}
+            className={`px-6 py-3 rounded-lg font-medium transition-all ${currentStep === 1
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+              }`}
           >
             Previous
           </button>
           <div className="flex gap-3">
+            <button
+              onClick={handleSaveStep}
+              className="px-6 py-3 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-all flex items-center gap-2"
+            >
+              <Save size={18} />
+              Save Progress
+            </button>
             {currentStep < 4 ? (
               <button
                 onClick={handleNext}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg flex items-center gap-2 shadow-lg"
+                className="px-6 py-3 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg"
               >
-                Next <ArrowRight size={18} />
+                Save & Next <ArrowRight size={18} />
               </button>
             ) : (
               <button
                 onClick={handleFinalSubmit}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg flex items-center gap-2 shadow-lg"
+                className="px-6 py-3 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg"
               >
                 <Check size={18} />
                 {isEditMode ? 'Update Student' : 'Create Student'}
