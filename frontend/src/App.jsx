@@ -10,7 +10,6 @@ import { ToastProvider } from "./components/ui/toast";
 // Auth Pages
 import Login from "./pages/auth/Login";
 import RegisterAgent from "./pages/auth/RegisterAgent";
-import RegisterStudent from "./pages/auth/RegisterStudent";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import SetupPassword from "./pages/auth/SetupPassword";
@@ -108,7 +107,6 @@ function AppContent() {
       <Route path="/" element={<RoleSelection />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register/agent" element={<RegisterAgent />} />
-      <Route path="/register/student" element={<RegisterStudent />} />
       <Route path="/agent-register" element={<PartnerApplicationForm />} />
       <Route path="/setup-password" element={<SetupPassword />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

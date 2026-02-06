@@ -88,8 +88,8 @@ const Login = () => {
         <div className="bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden border border-white/20">
           {/* Header Section */}
           <div className={`p-8 pb-4 text-center text-white bg-gradient-to-r ${currentGradient} relative`}>
-            <h1 className="text-3xl font-black tracking-tighter mb-1 uppercase">
-              {settings.platform_name || ''} <span className="font-light opacity-80 uppercase text-sm tracking-widest block mt-1">Global Education Portal</span>
+            <h1 style={{ color: "white" }} className="text-3xl tracking-tighter mb-1 uppercase">
+              {settings.platform_name || ''} <span className="font-light opacity-80 uppercase text-sm tracking-widest block mt-1 text-white">Global Education Portal</span>
             </h1>
             <div className="absolute bottom-[-24px] left-1/2 transform -translate-x-1/2 w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-primary-600 border border-gray-100">
               <ShieldCheck size={24} />
@@ -201,12 +201,9 @@ const Login = () => {
               ) : (
                 <div className="text-center space-y-3">
                   <p className="text-sm text-gray-500 font-medium">New to the Portal?</p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <Link to="/agent-register" className="text-sm font-bold text-primary-600 hover:text-primary-700 px-4 py-2 bg-primary-50 rounded-xl transition-colors w-full sm:w-auto">
+                  <div className="flex justify-center">
+                    <Link to="/agent-register" className="text-sm font-bold text-primary-600 hover:text-primary-700 px-6 py-3 bg-primary-50 rounded-xl transition-colors w-full sm:w-auto text-center">
                       Agent Registration
-                    </Link>
-                    <Link to="/register/student" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 px-4 py-2 bg-indigo-50 rounded-xl transition-colors w-full sm:w-auto">
-                      Student Enrollment
                     </Link>
                   </div>
                 </div>

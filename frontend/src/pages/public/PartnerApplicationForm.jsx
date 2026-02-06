@@ -98,7 +98,45 @@ const PartnerApplicationForm = () => {
         }
     };
 
-    const nextStep = () => { if (currentStep < totalSteps) setCurrentStep(currentStep + 1); };
+    const isStepValid = () => {
+        switch (currentStep) {
+            case 1:
+                return formData.firstName && formData.lastName && formData.email &&
+                    formData.phone && formData.qualification && formData.designation &&
+                    formData.experience;
+            case 2:
+                return formData.companyName && formData.companyType && formData.establishedYear &&
+                    formData.address && formData.city && formData.state && formData.pincode;
+            case 3:
+                return formData.specialization.length > 0 && formData.servicesOffered.length > 0 &&
+                    formData.currentStudents && formData.teamSize;
+            case 4:
+                return formData.partnershipType && formData.expectedStudents && formData.whyPartner;
+            case 5:
+                return formData.termsAccepted && formData.dataConsent;
+            default:
+                return false;
+        }
+    };
+
+    const nextStep = () => {
+        if (currentStep < totalSteps && isStepValid()) {
+            // Interactive feedback
+            const feedback = {
+                1: { title: 'Step 1 Success', next: 'Company details please' },
+                2: { title: 'Company Details Saved', next: 'Expertise & Reach details please' },
+                3: { title: 'Expertise Acknowledged', next: 'Partnership intent please' },
+                4: { title: 'Intent Noted', next: 'Review & Confirmation please' }
+            };
+
+            const stepInfo = feedback[currentStep];
+            if (stepInfo) {
+                toast.success(`${stepInfo.title}! ${stepInfo.next}.`);
+            }
+
+            setCurrentStep(currentStep + 1);
+        }
+    };
     const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
     useEffect(() => {
@@ -521,16 +559,26 @@ const PartnerApplicationForm = () => {
                             </button>
 
                             {currentStep < totalSteps ? (
-                                <button type="button" onClick={nextStep}
-                                    className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-sm transition-all flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={nextStep}
+                                    disabled={!isStepValid()}
+                                    className={`px-8 py-2.5 rounded-lg font-bold shadow-sm transition-all flex items-center gap-2 ${!isStepValid()
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100'
+                                        }`}
+                                >
                                     Next Step <ChevronRight size={16} />
                                 </button>
                             ) : (
-                                <button type="submit" disabled={isSubmitting || !formData.termsAccepted || !formData.dataConsent}
-                                    className={`px-10 py-2.5 rounded-lg font-bold shadow-md transition-all flex items-center gap-2 ${isSubmitting || !formData.termsAccepted || !formData.dataConsent
-                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting || !isStepValid()}
+                                    className={`px-10 py-2.5 rounded-lg font-bold shadow-md transition-all flex items-center gap-2 ${isSubmitting || !isStepValid()
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                                         : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
-                                        }`}>
+                                        }`}
+                                >
                                     {isSubmitting ? 'Submitting...' : <><Send size={16} /> Submit Application</>}
                                 </button>
                             )}

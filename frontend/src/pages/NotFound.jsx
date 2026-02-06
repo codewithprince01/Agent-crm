@@ -1,9 +1,12 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiFileText, FiHome, FiMail } from 'react-icons/fi';
+import { useSelector } from 'react-redux';
+import { selectSettings } from '../store/slices/settingsSlice';
 
 const NotFound = () => {
   const navigate = useNavigate();
+  const settings = useSelector(selectSettings);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center px-4">
@@ -12,22 +15,9 @@ const NotFound = () => {
         <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
         <h2 className="text-3xl font-semibold text-gray-800 mb-4">Page Not Found</h2>
         <p className="text-lg text-gray-600 mb-8">
-          The page you're looking for doesn't exist or the referral link is invalid.
+          The page you're looking for doesn't exist or has been moved.
         </p>
 
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-8 text-left">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">
-            Looking to register as a student?
-          </h3>
-          <p className="text-blue-700 mb-4">
-            You need a valid referral link from an authorized agent or admin.
-          </p>
-          <ul className="list-disc list-inside text-blue-700 space-y-2 text-sm">
-            <li>Contact your education consultant</li>
-            <li>Request a personalized registration link</li>
-            <li>Use the provided link to complete your application</li>
-          </ul>
-        </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
@@ -37,13 +27,15 @@ const NotFound = () => {
             <FiHome size={20} />
             Return Home
           </button>
-          <a
-            href="mailto:support@example.com"
-            className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-          >
-            <FiMail size={20} />
-            Contact Support
-          </a>
+          {settings.contact_email && (
+            <a
+              href={`mailto:${settings.contact_email}`}
+              className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+            >
+              <FiMail size={20} />
+              Contact Support
+            </a>
+          )}
         </div>
 
         <p className="text-sm text-gray-500 mt-8">
