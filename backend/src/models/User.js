@@ -34,7 +34,12 @@ const userSchema = new mongoose.Schema({
   },
   lastLogin: {
     type: Date
-  }
+  },
+  // Password Reset Fields
+  passwordResetOTP: String,
+  passwordResetOTPExpires: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date
 }, {
   timestamps: true
 });

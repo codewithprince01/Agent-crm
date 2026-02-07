@@ -99,6 +99,7 @@ const studentSchema = new mongoose.Schema({
   state: String,
   country: String,
   postalCode: String,
+  homeContactNumber: String,
 
   // Academic & Education
   academicLevel: String,
@@ -107,7 +108,25 @@ const studentSchema = new mongoose.Schema({
   gradingScheme: String,
   gradeAverage: String,
 
-  // Test Scores
+  // Nested Schools Attended
+  schoolsAttended: [{
+    country: String,
+    institutionName: String,
+    educationLevel: String,
+    primaryLanguage: String,
+    fromMonthYear: String,
+    toMonthYear: String,
+    degreeName: String,
+    graduated: Boolean,
+    graduationDate: Date,
+    certificateAvailable: Boolean,
+    address: String,
+    city: String,
+    province: String,
+    zipCode: String
+  }],
+
+  // Test Scores (English Proficiency)
   examType: String,
   examDate: Date,
   listeningScore: String,
@@ -115,6 +134,40 @@ const studentSchema = new mongoose.Schema({
   writingScore: String,
   speakingScore: String,
   overallScore: String,
+
+  // Additional Qualifications (Detailed)
+  additionalQualifications: {
+    gre: {
+      hasExam: { type: Boolean, default: false },
+      examDate: Date,
+      verbalScore: String,
+      verbalRank: String,
+      quantScore: String,
+      quantRank: String,
+      writingScore: String,
+      writingRank: String
+    },
+    gmat: {
+      hasExam: { type: Boolean, default: false },
+      examDate: Date,
+      verbalScore: String,
+      verbalRank: String,
+      quantScore: String,
+      quantRank: String,
+      writingScore: String,
+      writingRank: String,
+      irScore: String,
+      irRank: String,
+      totalScore: String,
+      totalRank: String
+    },
+    sat: {
+      hasExam: { type: Boolean, default: false },
+      examDate: Date,
+      reasoningPoint: String,
+      subjectTestPoint: String
+    }
+  },
 
   // Background
   visaRefusal: String,

@@ -10,7 +10,7 @@ const path = require('path');
 // Multer configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/documents/');
+    cb(null, 'upload/student/documents/');
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -42,6 +42,22 @@ const validateRequest = (req, res, next) => {
 };
 
 router.get('/', authMiddleware, StudentController.getAllStudents);
+
+// Get current student's own profile (must be before /:id route)
+router.get('/me', authMiddleware, StudentController.getMyProfile);
+
+// Update current student's own profile
+router.put('/me', authMiddleware, StudentController.updateMyProfile);
+
+// Upload current student's own document
+router.post(
+  '/me/documents',
+  authMiddleware,
+  upload.single('document'),
+  [body('document_type').trim().notEmpty().withMessage('Document type is required')],
+  validateRequest,
+  StudentController.uploadMyDocument
+);
 
 router.get('/:id', authMiddleware, StudentController.getStudentById);
 

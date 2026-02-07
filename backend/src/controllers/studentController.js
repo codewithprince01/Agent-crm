@@ -192,6 +192,104 @@ class StudentController {
   }
 
   /**
+   * Get current student's own profile (for logged in students)
+   * GET /api/students/me
+   */
+  static async getMyProfile(req, res) {
+    try {
+      // req.user is already populated by authMiddleware and contains the student data
+      const student = req.user;
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: 'Student profile not found'
+        });
+      }
+
+      // Remove sensitive referral data before sending to student
+      const studentData = student.toObject({ getters: true, virtuals: true });
+      delete studentData.referredBy;
+      delete studentData.referredByName;
+      delete studentData.referredByRole;
+      delete studentData.password;
+      delete studentData.__v;
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          student: studentData
+        }
+      });
+    } catch (error) {
+      console.error('Get my profile error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to get profile',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Update current student's own profile
+   * PUT /api/students/me
+   */
+  static async updateMyProfile(req, res) {
+    try {
+      const studentId = req.user._id;
+      const updateData = req.body;
+
+      // Remove fields that shouldn't be updated by student
+      delete updateData.password;
+      delete updateData.email; // Email shouldn't be changed directly
+      delete updateData.referredBy;
+      delete updateData.referredByName;
+      delete updateData.referredByRole;
+      delete updateData.isEmailVerified;
+      delete updateData.role;
+      delete updateData._id;
+
+      // Update student
+      const student = await Student.findByIdAndUpdate(
+        studentId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: 'Student not found'
+        });
+      }
+
+      // Remove sensitive data
+      const studentData = student.toObject({ getters: true, virtuals: true });
+      delete studentData.referredBy;
+      delete studentData.referredByName;
+      delete studentData.referredByRole;
+      delete studentData.password;
+      delete studentData.__v;
+
+      return res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          student: studentData
+        }
+      });
+    } catch (error) {
+      console.error('Update my profile error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update profile',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Delete student
    * DELETE /api/students/:id
    */
@@ -390,8 +488,17 @@ class StudentController {
         });
       }
 
-      // For now, just return success
-      // TODO: Implement document storage if needed
+      // Add document to student's documents array
+      const documentUrl = `/uploads/documents/${file.filename}`;
+      student.documents.push({
+        documentType: document_type,
+        documentName: file.originalname,
+        documentUrl: documentUrl,
+        verified: false
+      });
+
+      await student.save();
+
       console.log('Document uploaded for student:', id);
 
       return res.status(201).json({
@@ -399,16 +506,76 @@ class StudentController {
         message: 'Document uploaded successfully',
         data: {
           document: {
-            student_id: id,
-            document_type,
-            file_name: file.originalname,
-            file_path: file.path,
-            file_size: file.size
+            documentType: document_type,
+            documentName: file.originalname,
+            documentUrl: documentUrl,
+            verified: false
           }
         }
       });
     } catch (error) {
       console.error('Upload document error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to upload document',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Upload current student's own document
+   * POST /api/students/me/documents
+   */
+  static async uploadMyDocument(req, res) {
+    try {
+      const { document_type } = req.body;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded'
+        });
+      }
+
+      // req.user is the logged-in student from authMiddleware
+      const student = await Student.findById(req.user._id);
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: 'Student not found'
+        });
+      }
+
+      // Add document to student's documents array
+      const documentUrl = `/uploads/documents/${file.filename}`;
+      student.documents.push({
+        documentType: document_type,
+        documentName: file.originalname,
+        documentUrl: documentUrl,
+        verified: false
+      });
+
+      await student.save();
+
+      console.log('Document uploaded by student:', student._id);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Document uploaded successfully',
+        data: {
+          document: {
+            documentType: document_type,
+            documentName: file.originalname,
+            documentUrl: documentUrl,
+            verified: false
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Upload my document error:', error);
       return res.status(500).json({
         success: false,
         message: 'Failed to upload document',

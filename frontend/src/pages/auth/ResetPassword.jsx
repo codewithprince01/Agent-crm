@@ -9,8 +9,9 @@ import PasswordRequirements from '../../components/ui/PasswordRequirements';
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
+  const toast = useToast();
   const token = searchParams.get('token');
+  const role = searchParams.get('role');
 
   const [formData, setFormData] = useState({
     password: '',
@@ -25,12 +26,12 @@ const ResetPassword = () => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      toast({ title: 'Error', description: 'Passwords do not match', variant: 'destructive' });
+      toast.error('Passwords do not match');
       return;
     }
 
     if (!token) {
-      toast({ title: 'Error', description: 'Invalid or missing token', variant: 'destructive' });
+      toast.error('Invalid or missing token');
       return;
     }
 
@@ -40,20 +41,21 @@ const ResetPassword = () => {
       const response = await apiClient.post('/auth/reset-password', {
         token,
         password: formData.password,
-        confirmPassword: formData.confirmPassword
+        confirmPassword: formData.confirmPassword,
+        role
       });
 
       setSuccess(true);
-      toast({ title: 'Success', description: response.data.message || 'Password reset successfully!' });
+      toast.success(response.data.message || 'Password reset successfully!');
 
-      // Redirect to login after 3 seconds
+      // Redirect to login with role after 3 seconds
       setTimeout(() => {
-        navigate('/login');
+        navigate(role ? `/login?role=${role}` : '/login');
       }, 3000);
     } catch (error) {
       console.error('Reset password error:', error);
       const msg = error.response?.data?.message || 'Failed to reset password';
-      toast({ title: 'Error', description: msg, variant: 'destructive' });
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -83,7 +85,7 @@ const ResetPassword = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Successfully!</h2>
           <p className="text-gray-600 mb-6">You can now login with your new password.</p>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate(role ? `/login?role=${role}` : '/login')}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >
             Go to Login

@@ -26,6 +26,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import AgentDashboard from "./pages/dashboard/AgentDashboard";
 import StudentDashboard from "./pages/dashboard/StudentDashboard";
+import RoleBasedProfile from "./pages/RoleBasedProfile";
 
 // Admin Pages
 import AdminList from "./pages/admins/AdminList";
@@ -472,7 +473,11 @@ function AppContent() {
         />
 
 // Profile & Settings
-        <Route path="profile" element={<Profile />} />
+        <Route path="profile" element={
+          <ProtectedRoute>
+            <RoleBasedProfile />
+          </ProtectedRoute>
+        } />
         <Route
           path="settings"
           element={

@@ -7,8 +7,9 @@ import { useToast } from '../../components/ui/toast';
 const VerifyOTP = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { toast } = useToast();
+    const toast = useToast();
     const email = searchParams.get('email');
+    const role = searchParams.get('role');
 
     const [otp, setOtp] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,20 +30,20 @@ const VerifyOTP = () => {
         e.preventDefault();
 
         if (!email) {
-            toast({ title: 'Error', description: 'Email not found', variant: 'destructive' });
-            navigate('/forgot-password');
+            toast.error('Email not found');
+            navigate(role ? `/forgot-password?role=${role}` : '/forgot-password');
             return;
         }
 
         if (otp.length !== 6) {
-            toast({ title: '  Error', description: 'Please enter a 6-digit OTP', variant: 'destructive' });
+            toast.error('Please enter a 6-digit OTP');
             return;
         }
 
         setIsSubmitting(true);
 
         try {
-            const response = await apiClient.post('/auth/verify-otp', { email, otp });
+            const response = await apiClient.post('/auth/verify-otp', { email, otp, role });
 
             const resetToken = response.data?.data?.resetToken;
 
@@ -50,14 +51,14 @@ const VerifyOTP = () => {
                 throw new Error('Reset token not received');
             }
 
-            toast({ title: 'Success', description: 'OTP verified successfully!' });
+            toast.success('OTP verified successfully!');
 
-            // Navigate to reset password page with token
-            navigate(`/reset-password?token=${resetToken}`);
+            // Navigate to reset password page with token and role
+            navigate(`/reset-password?token=${resetToken}${role ? `&role=${role}` : ''}`);
         } catch (error) {
             console.error('Verify OTP error:', error);
             const msg = error.response?.data?.message || 'Invalid or expired OTP';
-            toast({ title: 'Error', description: msg, variant: 'destructive' });
+            toast.error(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -67,14 +68,14 @@ const VerifyOTP = () => {
         if (!canResend) return;
 
         try {
-            await apiClient.post('/auth/forgot-password', { email });
-            toast({ title: 'Success', description: 'New OTP sent to your email' });
+            await apiClient.post('/auth/forgot-password', { email, role });
+            toast.success('New OTP sent to your email');
             setCountdown(60);
             setCanResend(false);
             setOtp('');
         } catch (error) {
             console.error('Resend OTP error:', error);
-            toast({ title: 'Error', description: 'Failed to resend OTP', variant: 'destructive' });
+            toast.error('Failed to resend OTP');
         }
     };
 
@@ -84,7 +85,7 @@ const VerifyOTP = () => {
                 <div className="bg-white rounded-2xl shadow-xl p-8">
                     {/* Back Button */}
                     <button
-                        onClick={() => navigate('/forgot-password')}
+                        onClick={() => navigate(role ? `/forgot-password?role=${role}` : '/forgot-password')}
                         className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -128,8 +129,8 @@ const VerifyOTP = () => {
                             type="submit"
                             disabled={isSubmitting || otp.length !== 6}
                             className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${isSubmitting || otp.length !== 6
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-700'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700'
                                 }`}
                         >
                             {isSubmitting ? 'Verifying...' : 'Verify OTP'}
@@ -144,8 +145,8 @@ const VerifyOTP = () => {
                                     onClick={handleResend}
                                     disabled={!canResend}
                                     className={`font-medium ${canResend
-                                            ? 'text-blue-600 hover:text-blue-700'
-                                            : 'text-gray-400 cursor-not-allowed'
+                                        ? 'text-blue-600 hover:text-blue-700'
+                                        : 'text-gray-400 cursor-not-allowed'
                                         }`}
                                 >
                                     {canResend ? 'Resend OTP' : `Resend in ${countdown}s`}

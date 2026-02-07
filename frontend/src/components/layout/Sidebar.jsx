@@ -12,7 +12,14 @@ import {
   FiGrid,
   FiUserCheck,
   FiTrendingUp,
+  FiLogOut,
+  FiLock,
+  FiSearch,
+  FiHeart,
+  FiBookOpen,
 } from "react-icons/fi";
+import { useDispatch } from "react-redux";
+import { logout } from "../../store/slices/authSlice";
 import { ROLES } from "../../utils/constants";
 
 const styles = {
@@ -24,6 +31,12 @@ const styles = {
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    window.location.href = '/login';
+  };
 
   const getMenuItems = () => {
     switch (user?.role) {
@@ -64,8 +77,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       case ROLES.STUDENT:
         return [
           { path: "/dashboard", icon: FiHome, label: "Dashboard" },
-          { path: "/applications", icon: FiFileText, label: "My Applications" },
+          { onClick: () => { }, icon: FiFileText, label: "Applied Colleges" },
+          { onClick: () => { }, icon: FiHeart, label: "Shortlisted Colleges" },
           { path: "/profile", icon: FiUserCheck, label: "Profile" },
+          { onClick: () => { }, icon: FiLock, label: "Change Password" },
+          { path: "/logout", icon: FiLogOut, label: "Logout", onClick: handleLogout },
         ];
 
       default:
@@ -102,20 +118,33 @@ const Sidebar = ({ isOpen, onClose }) => {
         <nav className="flex-1 px-4 py-6 overflow-y-auto">
           <ul className="space-y-1">
             {menuItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center px-4 py-3 rounded-lg transition-colors ${isActive
-                      ? "bg-accent-500 text-white"
-                      : "text-primary-100 hover:bg-primary-500"
-                    }`
-                  }
-                  onClick={() => window.innerWidth < 768 && onClose()}
-                >
-                  <item.icon size={20} className="mr-3" />
-                  <span className="font-medium">{item.label}</span>
-                </NavLink>
+              <li key={item.label}>
+                {item.onClick ? (
+                  <button
+                    onClick={() => {
+                      item.onClick();
+                      window.innerWidth < 768 && onClose();
+                    }}
+                    className="w-full flex items-center px-4 py-3 rounded-lg transition-colors text-primary-100 hover:bg-primary-500"
+                  >
+                    <item.icon size={20} className="mr-3" />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                ) : (
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center px-4 py-3 rounded-lg transition-colors ${isActive
+                        ? "bg-accent-500 text-white"
+                        : "text-primary-100 hover:bg-primary-500"
+                      }`
+                    }
+                    onClick={() => window.innerWidth < 768 && onClose()}
+                  >
+                    <item.icon size={20} className="mr-3" />
+                    <span className="font-medium">{item.label}</span>
+                  </NavLink>
+                )}
               </li>
             ))}
           </ul>

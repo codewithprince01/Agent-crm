@@ -16,8 +16,23 @@ const authMiddleware = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Find user by ID (Mongoose)
-    const user = await User.findById(decoded.id).select('-password');
+    let user = null;
+
+    // Find user in the appropriate table based on role in token
+    if (decoded.role === 'STUDENT') {
+      const { Student } = require('../models');
+      user = await Student.findById(decoded.id).select('-password');
+    } else if (decoded.role === 'AGENT') {
+      const { Agent } = require('../models');
+      user = await Agent.findById(decoded.id).select('-password');
+    } else if (decoded.role === 'ADMIN' || decoded.role === 'SUPER_ADMIN') {
+      user = await User.findById(decoded.id).select('-password');
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid user role',
+      });
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -36,7 +51,7 @@ const authMiddleware = async (req, res, next) => {
     // Attach user to request
     req.user = user;
     req.userId = user._id;
-    req.userRole = user.role;
+    req.userRole = decoded.role; // Use role from token
 
     next();
   } catch (error) {

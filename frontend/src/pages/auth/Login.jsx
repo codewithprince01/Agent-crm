@@ -150,7 +150,7 @@ const Login = () => {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between ml-1">
                   <label className="block text-sm font-bold text-gray-700">Password</label>
-                  <Link to="/forgot-password" size="sm" className="text-xs font-bold text-primary-600 hover:text-primary-700 transition-colors hover:underline">
+                  <Link to={`/forgot-password${formData.role ? `?role=${formData.role}` : ''}`} size="sm" className="text-xs font-bold text-primary-600 hover:text-primary-700 transition-colors hover:underline">
                     Forgot Password?
                   </Link>
                 </div>
