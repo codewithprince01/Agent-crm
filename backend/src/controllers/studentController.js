@@ -5,12 +5,46 @@ const mongoose = require('mongoose');
 
 class StudentController {
   /**
+   * Helper to resolve referrer names and roles
+   */
+  static async resolveReferrerNames(referredByIds) {
+    const uniqueIds = [...new Set(referredByIds.filter(id => id && mongoose.isValidObjectId(id)))];
+
+    if (uniqueIds.length === 0) return {};
+
+    const [agents, users] = await Promise.all([
+      Agent.find({ _id: { $in: uniqueIds } }).select('firstName lastName').lean(),
+      User.find({ _id: { $in: uniqueIds } }).select('name role').lean()
+    ]);
+
+    const resultMap = {};
+
+    // Process Agents
+    agents.forEach(a => {
+      resultMap[a._id.toString()] = {
+        name: `${a.firstName || ''} ${a.lastName || ''}`.trim(),
+        role: 'Agent'
+      };
+    });
+
+    // Process Users (Admins/Super Admins)
+    users.forEach(u => {
+      resultMap[u._id.toString()] = {
+        name: u.name || 'Unknown Admin',
+        role: u.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'
+      };
+    });
+
+    return resultMap;
+  }
+
+  /**
    * Get all students
    * GET /api/students
    */
   static async getAllStudents(req, res) {
     try {
-      const { page = 1, limit = 100, search } = req.query;
+      const { page = 1, limit = 100, search, startDate, endDate, role, gender } = req.query;
       const skip = (page - 1) * limit;
 
       // Build query - only show completed registrations
@@ -27,6 +61,36 @@ class StudentController {
         ];
       }
 
+      // Date range filter
+      if (startDate || endDate) {
+        query.createdAt = {};
+        if (startDate) query.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          query.createdAt.$lte = end;
+        }
+      }
+
+      // Role filter
+      if (role && role !== 'All') {
+        if (role === 'Direct') {
+          query.referredBy = { $in: [null, ''] };
+        } else if (role === 'Agent') {
+          const agents = await Agent.find().select('_id').lean();
+          query.referredBy = { $in: agents.map(a => a._id.toString()) };
+        } else if (role === 'Admin' || role === 'Super Admin') {
+          const mRole = role === 'Super Admin' ? 'SUPER_ADMIN' : 'ADMIN';
+          const users = await User.find({ role: mRole }).select('_id').lean();
+          query.referredBy = { $in: users.map(u => u._id.toString()) };
+        }
+      }
+
+      // Gender filter
+      if (gender && gender !== 'All') {
+        query.gender = gender;
+      }
+
       // Get students
       const students = await Student.find(query)
         .select('-password -__v')
@@ -37,41 +101,33 @@ class StudentController {
 
       const count = await Student.countDocuments(query);
 
-      // Fetch referrer names
-      const uniqueReferrerIds = [...new Set(students.map(s => s.referredBy).filter(id => id && mongoose.isValidObjectId(id)))];
-
-      const [agents, users] = await Promise.all([
-        Agent.find({ _id: { $in: uniqueReferrerIds } }).select('firstName lastName').lean(),
-        User.find({ _id: { $in: uniqueReferrerIds } }).select('name').lean()
-      ]);
-
-      const referrerMap = {};
-      agents.forEach(a => {
-        referrerMap[a._id.toString()] = `${a.firstName} ${a.lastName}`.trim();
-      });
-      users.forEach(u => {
-        referrerMap[u._id.toString()] = u.name;
-      });
+      // Resolve referrer names and roles using helper
+      const referrerIds = students.map(s => s.referredBy).filter(Boolean);
+      const referrerMap = await StudentController.resolveReferrerNames(referrerIds);
 
       // Map to frontend-friendly format
-      const formattedStudents = students.map(student => ({
-        _id: student._id,
-        id: student._id,
-        studentId: student.studentId,
-        firstName: student.firstName,
-        lastName: student.lastName,
-        name: `${student.firstName} ${student.lastName}`,
-        email: student.email,
-        mobile: student.phone,
-        phone: student.phone,
-        gender: student.gender,
-        nationality: student.nationality,
-        country: student.country,
-        referredBy: student.referredBy,
-        referredByName: student.referredBy ? (referrerMap[student.referredBy.toString()] || student.referredBy) : 'Direct',
-        createdAt: student.createdAt,
-        updatedAt: student.updatedAt
-      }));
+      const formattedStudents = students.map(student => {
+        const refInfo = student.referredBy ? referrerMap[student.referredBy.toString()] : null;
+        return {
+          _id: student._id,
+          id: student._id,
+          studentId: student.studentId,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          mobile: student.phone,
+          phone: student.phone,
+          gender: student.gender,
+          nationality: student.nationality,
+          country: student.country,
+          referredBy: student.referredBy,
+          referredByName: refInfo ? refInfo.name : (student.referredBy ? 'Unknown' : 'Direct'),
+          referredByRole: refInfo ? refInfo.role : (student.referredBy ? 'N/A' : 'Direct'),
+          createdAt: student.createdAt,
+          updatedAt: student.updatedAt
+        };
+      });
 
       return res.status(200).json({
         success: true,
@@ -111,15 +167,58 @@ class StudentController {
         });
       }
 
+      // Resolve referrer name for single student
+      const referrerMap = await StudentController.resolveReferrerNames([student.referredBy]);
+      const refInfo = student.referredBy ? referrerMap[student.referredBy.toString()] : null;
+
       return res.status(200).json({
         success: true,
-        data: { student }
+        data: {
+          student: {
+            ...student.toObject({ getters: true, virtuals: true }),
+            referredByName: refInfo ? refInfo.name : (student.referredBy ? 'Unknown' : 'Direct'),
+            referredByRole: refInfo ? refInfo.role : (student.referredBy ? 'N/A' : 'Direct')
+          }
+        }
       });
     } catch (error) {
       console.error('Get student error:', error);
       return res.status(500).json({
         success: false,
         message: 'Failed to get student',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Delete student
+   * DELETE /api/students/:id
+   */
+  static async deleteStudent(req, res) {
+    try {
+      const { id } = req.params;
+
+      const student = await Student.findById(id);
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: 'Student not found'
+        });
+      }
+
+      await Student.findByIdAndDelete(id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Student deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete student error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to delete student',
         error: error.message
       });
     }
@@ -167,6 +266,11 @@ class StudentController {
         return `${prefix}${timestamp}${random}`;
       };
 
+      // Generate setup token (expires in 24 hours)
+      const crypto = require('crypto');
+      const setupToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
       // Create student
       const student = new Student({
         studentId: generateStudentId(),
@@ -174,7 +278,10 @@ class StudentController {
         lastName: lastName || name?.split(' ').slice(1).join(' '),
         email: email.toLowerCase(),
         phone,
-        password, // Will be hashed by pre-save hook
+        // System generated students don't have password yet, they set it via link
+        isPasswordSet: false,
+        passwordSetupToken: setupToken,
+        passwordSetupExpires: tokenExpires,
         dateOfBirth,
         gender,
         nationality,
@@ -193,7 +300,11 @@ class StudentController {
 
       await student.save();
 
-      console.log('Student created manually:', student.studentId);
+      // Send welcome email with setup link
+      const emailService = require('../services/emailService');
+      await emailService.sendStudentWelcomeEmail(student, setupToken);
+
+      console.log('Student created manually and welcome email sent:', student.studentId);
 
       return res.status(201).json({
         success: true,

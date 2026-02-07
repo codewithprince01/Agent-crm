@@ -59,6 +59,8 @@ router.post(
 
 router.put('/:id', authMiddleware, StudentController.updateStudent);
 
+router.delete('/:id', authMiddleware, StudentController.deleteStudent);
+
 router.post(
   '/:id/documents',
   authMiddleware,

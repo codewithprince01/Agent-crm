@@ -10,11 +10,15 @@ import { ToastProvider } from "./components/ui/toast";
 // Auth Pages
 import Login from "./pages/auth/Login";
 import RegisterAgent from "./pages/auth/RegisterAgent";
-import RegisterStudent from "./pages/auth/RegisterStudent";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import SetupPassword from "./pages/auth/SetupPassword";
 import VerifyOTP from "./pages/auth/VerifyOTP";
+import RoleSelection from "./pages/auth/RoleSelection";
+import StudentSetupPassword from "./pages/auth/student/StudentSetupPassword";
+import StudentForgotPassword from "./pages/auth/student/StudentForgotPassword";
+import StudentVerifyOTP from "./pages/auth/student/StudentVerifyOTP";
+import StudentResetPassword from "./pages/auth/student/StudentResetPassword";
 import PartnerApplicationForm from "./pages/public/PartnerApplicationForm";
 
 // Dashboard Pages
@@ -100,14 +104,21 @@ function AppContent() {
   return (
     <Routes>
       {/* Public Routes */}
+      <Route path="/" element={<RoleSelection />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register/agent" element={<RegisterAgent />} />
-      <Route path="/register/student" element={<RegisterStudent />} />
       <Route path="/agent-register" element={<PartnerApplicationForm />} />
       <Route path="/setup-password" element={<SetupPassword />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+      {/* Student Specific Auth Routes */}
+      <Route path="/student/setup-password" element={<StudentSetupPassword />} />
+      <Route path="/student/forgot-password" element={<StudentForgotPassword />} />
+      <Route path="/student/verify-otp" element={<StudentVerifyOTP />} />
+      <Route path="/student/reset-password" element={<StudentResetPassword />} />
+
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Public Student Registration Routes - Requires Valid Referral */}
@@ -129,17 +140,15 @@ function AppContent() {
 
 
 
-      {/* Protected Routes */}
+      {/* Protected Routes - Layout only, no path to avoid conflict with root landing page */}
       <Route
-        path="/"
         element={
           <ProtectedRoute>
             <DashboardLayout />
           </ProtectedRoute>
         }
       >
-        {/* Dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Individual Protected Routes */}
         <Route
           path="dashboard"
           element={
@@ -329,7 +338,7 @@ function AppContent() {
             <ProtectedRoute
               allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.AGENT]}
             >
-              <CreateStudent />
+              <StudentForm />
             </ProtectedRoute>
           }
         />

@@ -72,6 +72,7 @@ const StudentDetails = () => {
   });
 
   const [referrerName, setReferrerName] = useState("");
+  const [referrerRole, setReferrerRole] = useState("");
 
   // Fetch student data on component mount
   useEffect(() => {
@@ -145,26 +146,9 @@ const StudentDetails = () => {
           documents: studentInfo.documents || []
         });
 
-        // Fetch Referrer Name if ID exists
-        if (studentInfo.referredBy) {
-          try {
-            console.log('Fetching Referrer ID:', studentInfo.referredBy);
-            const agentRes = await agentService.getAgentById(studentInfo.referredBy);
-            console.log('Referrer API Response:', agentRes);
-            const agent = agentRes?.agent || agentRes?.data?.agent || agentRes?.data || agentRes;
-            if (agent) {
-              const fullName = `${agent.firstName || ''} ${agent.lastName || ''}`.trim();
-              setReferrerName(fullName || studentInfo.referredBy);
-            } else {
-              setReferrerName(studentInfo.referredBy);
-            }
-          } catch (err) {
-            console.error('Error fetching referrer:', err);
-            setReferrerName(studentInfo.referredBy);
-          }
-        } else {
-          setReferrerName("Direct");
-        }
+        // Set Referrer Info from backend data
+        setReferrerName(studentInfo.referredByName || "Direct");
+        setReferrerRole(studentInfo.referredByRole || "");
       }
     } catch (err) {
       console.error('Error fetching student:', err);
@@ -328,7 +312,12 @@ const StudentDetails = () => {
                     <span className="text-[13px] text-gray-400 font-bold uppercase tracking-wider">Referrer Name</span>
                     <span className="text-sm text-gray-900 font-bold flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                      {referrerName || "Checking..."}
+                      {referrerName}
+                      {referrerRole && (
+                        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 ml-1">
+                          {referrerRole}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-50 flex flex-col gap-2">

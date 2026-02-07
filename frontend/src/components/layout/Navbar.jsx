@@ -13,7 +13,7 @@ const Navbar = ({ onMenuClick }) => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate("/login");
+    navigate("/");
   };
 
   return (

@@ -49,6 +49,21 @@ router.post(
 );
 
 /**
+ * @route   POST /api/auth/student-login
+ * @desc    Student login
+ * @access  Public
+ */
+router.post(
+  '/student-login',
+  [
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('password').notEmpty().withMessage('Password is required'),
+  ],
+  validateRequest,
+  AuthController.studentLogin
+);
+
+/**
  * @route   POST /api/auth/register-agent
  * @desc    Register new agent
  * @access  Public
@@ -77,10 +92,68 @@ router.post(
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   ],
   validateRequest,
   AuthController.registerStudent
+);
+
+/**
+ * @route   POST /api/auth/student/setup-password
+ * @desc    Student setup password (first-time)
+ * @access  Public
+ */
+router.post(
+  '/student/setup-password',
+  [
+    body('token').notEmpty().withMessage('Token is required'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  ],
+  validateRequest,
+  AuthController.studentSetupPassword
+);
+
+/**
+ * @route   POST /api/auth/student/forgot-password
+ * @desc    Request student password reset OTP
+ * @access  Public
+ */
+router.post(
+  '/student/forgot-password',
+  [
+    body('email').isEmail().withMessage('Valid email is required'),
+  ],
+  validateRequest,
+  AuthController.studentForgotPassword
+);
+
+/**
+ * @route   POST /api/auth/student/verify-otp
+ * @desc    Verify student OTP
+ * @access  Public
+ */
+router.post(
+  '/student/verify-otp',
+  [
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  ],
+  validateRequest,
+  AuthController.studentVerifyOTP
+);
+
+/**
+ * @route   POST /api/auth/student/reset-password
+ * @desc    Reset student password with token
+ * @access  Public
+ */
+router.post(
+  '/student/reset-password',
+  [
+    body('token').notEmpty().withMessage('Token is required'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  ],
+  validateRequest,
+  AuthController.studentResetPassword
 );
 
 /**

@@ -1,7 +1,7 @@
 import apiClient from './apiClient';
 
 export const studentService = {
-  // Get all students
+  // Get all students with optional filters
   getStudents: async (params = {}) => {
     const response = await apiClient.get('/students', { params });
     return response.data;
@@ -25,11 +25,11 @@ export const studentService = {
     return response.data;
   },
 
-  // Delete student (Not implemented in backend)
-  // deleteStudent: async (id) => {
-  //   const response = await apiClient.delete(`/students/${id}`);
-  //   return response.data;
-  // },
+  // Delete student
+  deleteStudent: async (id) => {
+    const response = await apiClient.delete(`/students/${id}`);
+    return response.data;
+  },
 
   // Upload document
   uploadDocument: async (id, formData) => {

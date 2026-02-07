@@ -265,6 +265,105 @@ class EmailService {
     `;
     return this.sendEmail(agent.email, subject, html);
   }
+
+  /**
+   * Send student welcome email with password setup link
+   */
+  async sendStudentWelcomeEmail(student, setupToken) {
+    const subject = 'Welcome to Britannica Overseas - Set Your Password';
+    const setupUrl = `${process.env.FRONTEND_URL}/student/setup-password?token=${setupToken}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0;">Welcome!</h1>
+          <p style="margin: 10px 0 0;">Your journey with Britannica Overseas begins here</p>
+        </div>
+        <div style="padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 10px 10px; background-color: #f9f9fafb;">
+          <p>Dear ${student.firstName} ${student.lastName},</p>
+          <p>Congratulations! Your registration has been successful. To get started and access your student portal, please set up your account password by clicking the button below:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${setupUrl}" 
+               style="background-color: #4F46E5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+              Create Your Password
+            </a>
+          </div>
+          
+          <p>Or copy and paste this link in your browser:</p>
+          <p style="word-break: break-all; color: #4F46E5; font-size: 14px;">${setupUrl}</p>
+          
+          <div style="background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; color: #92400E; font-size: 14px;"><strong>Note:</strong> This link is valid for 24 hours. After it expires, you can use the "Forgot Password" option to get a new link.</p>
+          </div>
+          
+          <p>Best regards,<br><strong>Britannica Overseas Team</strong></p>
+        </div>
+        <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #6B7280;">
+          <p>&copy; ${new Date().getFullYear()} Britannica Overseas. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+    return this.sendEmail(student.email, subject, html);
+  }
+
+  /**
+   * Send student password reset OTP
+   */
+  async sendStudentPasswordResetOTP(student, otp) {
+    const subject = 'Password Reset OTP - Britannica Overseas';
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #4F46E5; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h2 style="margin: 0;">Password Reset Request</h2>
+        </div>
+        <div style="padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 10px 10px;">
+          <p>Dear ${student.firstName || 'Student'},</p>
+          <p>We received a request to reset your password. Use the 6-digit OTP below to verify your identity:</p>
+          
+          <div style="background-color: #F3F4F6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 12px; border: 2px dashed #4F46E5;">
+            <h1 style="margin: 0; font-size: 42px; letter-spacing: 12px; color: #4F46E5;">${otp}</h1>
+          </div>
+          
+          <p><strong>This OTP will expire in 10 minutes.</strong></p>
+          <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">
+          <p style="font-size: 14px; color: #6B7280;">Best regards,<br>Britannica Overseas Team</p>
+        </div>
+      </div>
+    `;
+    return this.sendEmail(student.email, subject, html);
+  }
+
+  /**
+   * Send student password reset success confirmation
+   */
+  async sendStudentPasswordResetSuccess(student) {
+    const subject = 'Password Reset Successful - Britannica Overseas';
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #10B981; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h2 style="margin: 0;">Password Updated!</h2>
+        </div>
+        <div style="padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 10px 10px;">
+          <p>Dear ${student.firstName || 'Student'},</p>
+          <p>Your password has been successfully reset. You can now log in with your new password.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${loginUrl}" 
+               style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+              Login to Your Portal
+            </a>
+          </div>
+          
+          <p>If you didn't make this change, please contact our support team immediately as your account security might be at risk.</p>
+          <p>Best regards,<br>Britannica Overseas Team</p>
+        </div>
+      </div>
+    `;
+    return this.sendEmail(student.email, subject, html);
+  }
 }
 
 module.exports = new EmailService();

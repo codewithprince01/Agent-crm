@@ -238,56 +238,239 @@ class AuthController {
    * Register Student
    * POST /api/auth/register-student
    */
+  /**
+   * Register Student (Public)
+   * POST /api/auth/register-student
+   */
   static async registerStudent(req, res) {
     try {
-      const { name, email, phone, password, agent_id, date_of_birth, nationality, passport_number } = req.body;
+      const { name, email, phone, agent_id, date_of_birth, nationality, passport_number } = req.body;
 
-      // Check if email exists in students table
-      const existingStudent = await Student.findOne({ email });
+      // Check if email exists
+      const existingStudent = await Student.findOne({ email: email.toLowerCase() });
       if (existingStudent) {
         return ResponseHandler.error(res, 'Email already exists', 400);
       }
 
-      // Create student (self-contained)
+      // Generate setup token (expires in 24 hours)
+      const crypto = require('crypto');
+      const setupToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // Create student
       const student = await Student.create({
-        name,
-        email,
+        firstName: name?.split(' ')[0] || '',
+        lastName: name?.split(' ').slice(1).join(' ') || '',
+        email: email.toLowerCase(),
         phone,
-        password,
-        agent_id: agent_id || null,
-        date_of_birth,
+        agentId: agent_id || null,
+        dateOfBirth: date_of_birth,
         nationality,
-        passport_number,
+        passportNumber: passport_number,
         status: 'active',
+        isCompleted: true, // If they reach here from public form
+        passwordSetupToken: setupToken,
+        passwordSetupExpires: tokenExpires,
+        isPasswordSet: false
       });
 
-      logger.info('Student registered', { studentId: student.id, email: student.email });
+      // Send welcome email with setup link
+      await emailService.sendStudentWelcomeEmail(student, setupToken);
 
-      // Generate token for auto-login
-      const token = jwt.sign(
-        {
-          id: student.id,
-          email: student.email,
-          role: 'STUDENT',
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-      );
+      logger.info('Student registered via public URL', { studentId: student._id, email: student.email });
 
-      return ResponseHandler.created(res, 'Student registration successful', {
-        token,
-        user: {
-          id: student.id,
-          name: student.name,
-          email: student.email,
-          role: 'STUDENT',
-          phone: student.phone,
-          status: student.status,
-        },
+      return ResponseHandler.created(res, 'Registration successful. Please check your email to set your password.', {
+        studentId: student._id,
+        email: student.email
       });
     } catch (error) {
       logger.error('Student registration error', { error: error.message });
       return ResponseHandler.serverError(res, 'Registration failed', error);
+    }
+  }
+
+  /**
+   * Student Login
+   * POST /api/auth/student-login
+   */
+  static async studentLogin(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      const student = await Student.findOne({ email: email.toLowerCase(), isCompleted: true });
+
+      if (!student) {
+        return ResponseHandler.unauthorized(res, 'Invalid credentials');
+      }
+
+      if (!student.isPasswordSet) {
+        return ResponseHandler.forbidden(res, 'Please set your password using the link sent to your email.');
+      }
+
+      const isPasswordValid = await student.comparePassword(password);
+      if (!isPasswordValid) {
+        return ResponseHandler.unauthorized(res, 'Invalid credentials');
+      }
+
+      if (student.status !== 'active') {
+        return ResponseHandler.forbidden(res, 'Account is inactive');
+      }
+
+      const token = jwt.sign(
+        { id: student._id, email: student.email, role: 'STUDENT' },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      );
+
+      student.lastLogin = new Date();
+      await student.save();
+
+      return ResponseHandler.success(res, 'Login successful', {
+        token,
+        user: {
+          id: student._id,
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          role: 'STUDENT',
+          status: student.status
+        }
+      });
+    } catch (error) {
+      logger.error('Student login error', { error: error.message });
+      return ResponseHandler.serverError(res, 'Login failed', error);
+    }
+  }
+
+  /**
+   * Setup Student Password
+   * POST /api/auth/student/setup-password
+   */
+  static async studentSetupPassword(req, res) {
+    try {
+      const { token, password } = req.body;
+
+      const student = await Student.findOne({
+        passwordSetupToken: token,
+        passwordSetupExpires: { $gt: Date.now() }
+      });
+
+      if (!student) {
+        return ResponseHandler.badRequest(res, 'Invalid or expired setup link');
+      }
+
+      student.password = password; // Will be hashed by pre-save
+      student.isPasswordSet = true;
+      student.passwordSetupToken = undefined;
+      student.passwordSetupExpires = undefined;
+
+      await student.save();
+
+      logger.info('Student password setup complete', { studentId: student._id });
+
+      return ResponseHandler.success(res, 'Password set successfully. You can now login.');
+    } catch (error) {
+      logger.error('Student setup password error', { error: error.message });
+      return ResponseHandler.serverError(res, 'Failed to setup password', error);
+    }
+  }
+
+  /**
+   * Student Forgot Password (Send OTP)
+   * POST /api/auth/student/forgot-password
+   */
+  static async studentForgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      const student = await Student.findOne({ email: email.toLowerCase(), isCompleted: true });
+
+      if (!student) {
+        // Silent fail for security
+        return ResponseHandler.success(res, 'If your email is registered, you will receive an OTP.');
+      }
+
+      // Generate 6-digit OTP
+      const { generateOTP } = require('../utils/otpGenerator');
+      const otp = generateOTP();
+
+      student.passwordResetOTP = otp;
+      student.passwordResetOTPExpires = Date.now() + 10 * 60 * 1000; // 10 mins
+
+      await student.save();
+
+      await emailService.sendStudentPasswordResetOTP(student, otp);
+
+      return ResponseHandler.success(res, 'OTP sent successfully.');
+    } catch (error) {
+      logger.error('Student forgot password error', { error: error.message });
+      return ResponseHandler.serverError(res, 'Failed to process request', error);
+    }
+  }
+
+  /**
+   * Verify Student OTP
+   * POST /api/auth/student/verify-otp
+   */
+  static async studentVerifyOTP(req, res) {
+    try {
+      const { email, otp } = req.body;
+      const student = await Student.findOne({
+        email: email.toLowerCase(),
+        passwordResetOTP: otp,
+        passwordResetOTPExpires: { $gt: Date.now() }
+      });
+
+      if (!student) {
+        return ResponseHandler.badRequest(res, 'Invalid or expired OTP');
+      }
+
+      // Generate reset token
+      const crypto = require('crypto');
+      const resetToken = crypto.randomBytes(32).toString('hex');
+
+      student.passwordResetToken = resetToken;
+      student.passwordResetExpires = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
+      student.passwordResetOTP = undefined;
+      student.passwordResetOTPExpires = undefined;
+
+      await student.save();
+
+      return ResponseHandler.success(res, 'OTP verified', { resetToken });
+    } catch (error) {
+      logger.error('Student verify OTP error', { error: error.message });
+      return ResponseHandler.serverError(res, 'Verification failed', error);
+    }
+  }
+
+  /**
+   * Student Reset Password (via Token)
+   * POST /api/auth/student/reset-password
+   */
+  static async studentResetPassword(req, res) {
+    try {
+      const { token, password } = req.body;
+
+      const student = await Student.findOne({
+        passwordResetToken: token,
+        passwordResetExpires: { $gt: Date.now() }
+      });
+
+      if (!student) {
+        return ResponseHandler.badRequest(res, 'Invalid or expired reset token');
+      }
+
+      student.password = password;
+      student.passwordResetToken = undefined;
+      student.passwordResetExpires = undefined;
+      student.isPasswordSet = true; // In case they reset before setup (though unlikely)
+
+      await student.save();
+
+      await emailService.sendStudentPasswordResetSuccess(student);
+
+      return ResponseHandler.success(res, 'Password reset successful.');
+    } catch (error) {
+      logger.error('Student reset password error', { error: error.message });
+      return ResponseHandler.serverError(res, 'Reset failed', error);
     }
   }
 

@@ -72,19 +72,36 @@ class SettingsController {
     // Bulk update settings
     static async bulkUpdateSettings(req, res) {
         try {
-            const { settings } = req.body;
+            let { settings } = req.body;
 
-            if (!settings || !Array.isArray(settings)) {
-                return res.status(400).json({ success: false, message: 'Settings array is required' });
+            if (!settings) {
+                return res.status(400).json({ success: false, message: 'Settings are required' });
+            }
+
+            // If settings is a flat object, convert it to an array of { key, value }
+            if (typeof settings === 'object' && !Array.isArray(settings)) {
+                settings = Object.entries(settings).map(([key, value]) => ({
+                    key,
+                    value: typeof value === 'object' ? JSON.stringify(value) : String(value)
+                }));
+            }
+
+            if (!Array.isArray(settings)) {
+                return res.status(400).json({ success: false, message: 'Settings must be an array or an object' });
             }
 
             // Use Promise.all for concurrent updates
             const updatePromises = settings.map(({ key, value, group, type, description }) => {
                 if (!key) return Promise.resolve(null);
 
+                const updateData = { value: String(value) };
+                if (group) updateData.group = group;
+                if (type) updateData.type = type;
+                if (description) updateData.description = description;
+
                 return Setting.findOneAndUpdate(
                     { key },
-                    { value, group, type, description },
+                    updateData,
                     { new: true, upsert: true, runValidators: true }
                 );
             });

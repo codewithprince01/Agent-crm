@@ -25,6 +25,11 @@ const StudentList = () => {
     const { students, loading, error } = useSelector((state) => state.student);
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterRole, setFilterRole] = useState('All');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
+
     const [showAddModal, setShowAddModal] = useState(false);
     const [showLinkDialog, setShowLinkDialog] = useState(false);
     const [generatedLink, setGeneratedLink] = useState('');
@@ -37,17 +42,21 @@ const StudentList = () => {
         totalPages: 0,
     });
 
-    // Fetch students on component mount
+    // Fetch students on component mount or when pagination changes
     useEffect(() => {
         fetchStudentsData();
-    }, []);
+    }, [pagination.page, pagination.limit]);
 
     const fetchStudentsData = async () => {
         try {
             dispatch(setLoading(true));
             const response = await studentService.getStudents({
                 page: pagination.page,
-                limit: pagination.limit
+                limit: pagination.limit,
+                search: searchTerm,
+                role: filterRole,
+                startDate,
+                endDate
             });
 
             dispatch(setStudents({
@@ -72,20 +81,23 @@ const StudentList = () => {
     };
 
 
-    // Filter students based on search term
-    const filteredStudents = students.filter(student => {
-        if (!searchTerm) return true;
-        const searchLower = searchTerm.toLowerCase();
-        const fullName = `${student.firstName || ''} ${student.lastName || ''}`.toLowerCase();
-        return (
-            fullName.includes(searchLower) ||
-            student.firstName?.toLowerCase().includes(searchLower) ||
-            student.lastName?.toLowerCase().includes(searchLower) ||
-            student.email?.toLowerCase().includes(searchLower) ||
-            student.mobile?.includes(searchTerm) ||
-            student.studentId?.toLowerCase().includes(searchLower)
-        );
-    });
+    // Search and filtering is now handled server-side for performance
+    const filteredStudents = students;
+
+    const handleApplyFilters = () => {
+        setPagination(prev => ({ ...prev, page: 1 }));
+        fetchStudentsData();
+    };
+
+    const clearFilters = () => {
+        setSearchTerm('');
+        setFilterRole('All');
+        setStartDate('');
+        setEndDate('');
+        setPagination(prev => ({ ...prev, page: 1 }));
+        // Using a slight delay to ensure state updates before fetch, or pass values directly
+        setTimeout(() => fetchStudentsData(), 0);
+    };
 
     const handleShareLink = () => {
         const referralCode = user?.id || user?._id || 'ADMIN123';
@@ -117,8 +129,7 @@ const StudentList = () => {
         if (!deleteConfirm) return;
 
         try {
-            // Note: Delete API might not be implemented in backend yet
-            // await studentService.deleteStudent(deleteConfirm._id);
+            await studentService.deleteStudent(deleteConfirm._id);
             toast.success(`Student deleted successfully`);
             setDeleteConfirm(null);
             fetchStudentsData();
@@ -143,6 +154,102 @@ const StudentList = () => {
                     <Plus size={20} />
                     Add Student
                 </button>
+            </div>
+
+            {/* Filters Section */}
+            <div className="bg-white rounded-3xl shadow-sm p-8 mb-8 border border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    {/* Search Bar */}
+                    <div className="md:col-span-5 relative">
+                        <div className="relative">
+                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by name, email, id, phone..."
+                                className="w-full pl-14 pr-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium placeholder:text-gray-400 shadow-sm"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Referrer Role Filter */}
+                    <div className="md:col-span-3">
+                        <div className="relative">
+                            <select
+                                value={filterRole}
+                                onChange={(e) => setFilterRole(e.target.value)}
+                                className="w-full px-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium appearance-none shadow-sm cursor-pointer"
+                            >
+                                <option value="All">Referrer Role: All</option>
+                                <option value="Agent">Role: Agents</option>
+                                <option value="Admin">Role: Admins</option>
+                                <option value="Super Admin">Role: Super Admins</option>
+                                <option value="Direct">Role: Direct Entry</option>
+                            </select>
+                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {/* From Date */}
+                    <div className="md:col-span-2">
+                        <div className="relative">
+                            <input
+                                type="date"
+                                placeholder="From Date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="w-full px-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium shadow-sm"
+                            />
+                        </div>
+                    </div>
+
+                    {/* To Date */}
+                    <div className="md:col-span-2">
+                        <div className="relative">
+                            <input
+                                type="date"
+                                placeholder="To Date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="w-full px-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium shadow-sm"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Buttons Row */}
+                    <div className="md:col-span-12 flex justify-end gap-3 mt-6">
+                        <button
+                            onClick={handleApplyFilters}
+                            className="px-8 py-3 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition-all text-sm shadow-md flex items-center gap-2"
+                        >
+                            <Search size={18} />
+                            Apply filter
+                        </button>
+                        <button
+                            onClick={clearFilters}
+                            className="px-8 py-3 border-2 border-indigo-600 text-indigo-600 rounded-full font-bold hover:bg-indigo-50 transition-all text-sm"
+                        >
+                            Clear filter
+                        </button>
+                    </div>
+                </div>
+
+                {/* Filter Summary Badge */}
+                {(filterRole !== 'All' || startDate || endDate || searchTerm) && (
+                    <div className="mt-6 flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Active:</span>
+                        <div className="flex flex-wrap gap-2">
+                            {searchTerm && <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold uppercase">Search: {searchTerm}</span>}
+                            {filterRole !== 'All' && <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold uppercase">Role: {filterRole}</span>}
+                            {startDate && <span className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold uppercase">From: {startDate}</span>}
+                            {endDate && <span className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold uppercase">To: {endDate}</span>}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Add Student Dialog */}
@@ -206,27 +313,6 @@ const StudentList = () => {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Search Bar */}
-            <div className="mb-6">
-                <div className="relative flex items-center max-w-2xl">
-                    <Search size={20} className="absolute left-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search by name, email, mobile, or student ID..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                    />
-                    {searchTerm && (
-                        <button
-                            onClick={() => setSearchTerm('')}
-                            className="absolute right-4 text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={20} />
-                        </button>
-                    )}
-                </div>
-            </div>
 
             {/* Loading State */}
             {loading && (
@@ -321,9 +407,16 @@ const StudentList = () => {
                                             <span className="text-gray-600">{student.country || 'N/A'}</span>
                                         </td>
                                         <td className="p-4">
-                                            <span className="text-gray-600">
-                                                {student.referredByName || 'Direct'}
-                                            </span>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-800 font-medium">
+                                                    {student.referredByName || 'Direct'}
+                                                </span>
+                                                {student.referredByRole && student.referredByRole !== 'Direct' && student.referredByRole !== 'N/A' && (
+                                                    <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">
+                                                        {student.referredByRole}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="p-4">
                                             <span className="text-gray-600">

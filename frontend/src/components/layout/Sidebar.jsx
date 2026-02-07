@@ -46,8 +46,6 @@ const Sidebar = ({ isOpen, onClose }) => {
         return [
           { path: "/dashboard", icon: FiHome, label: "Dashboard" },
           { path: "/agents", icon: FiUsers, label: "Agents" },
-          { path: "/universities", icon: FiGrid, label: "Universities" },
-          { path: "/courses", icon: FiBook, label: "Courses" },
           { path: "/students", icon: FiUserCheck, label: "Students" },
           { path: "/applications", icon: FiFileText, label: "Applications" },
           { path: "/commissions", icon: FiDollarSign, label: "Commissions" },
@@ -59,8 +57,6 @@ const Sidebar = ({ isOpen, onClose }) => {
           { path: "/dashboard", icon: FiHome, label: "Dashboard" },
           { path: "/students", icon: FiUserCheck, label: "My Students" },
           { path: "/applications", icon: FiFileText, label: "Applications" },
-          { path: "/universities", icon: FiGrid, label: "Universities" },
-          { path: "/courses", icon: FiBook, label: "Courses" },
           { path: "/earnings", icon: FiDollarSign, label: "Earnings" },
           { path: "/payouts", icon: FiTrendingUp, label: "Payouts" },
         ];
