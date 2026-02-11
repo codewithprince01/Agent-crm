@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Sub-schema for embedded documents
 const studentDocumentSchema = new mongoose.Schema({

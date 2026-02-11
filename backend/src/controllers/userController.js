@@ -1,5 +1,6 @@
 const { User } = require('../models');
 const ResponseHandler = require('../utils/responseHandler');
+const AuditService = require('../services/auditService');
 const logger = require('../utils/logger');
 
 class UserController {
@@ -98,6 +99,13 @@ class UserController {
 
             logger.info('User created', { userId: user._id, email: user.email, role: user.role });
 
+            // Log audit
+            await AuditService.logCreate(req.user, 'User', user._id, {
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }, req);
+
             return ResponseHandler.created(res, 'User created successfully', {
                 user: {
                     id: user._id,
@@ -147,6 +155,9 @@ class UserController {
 
             logger.info('User updated', { userId: user._id, email: user.email });
 
+            // Log audit
+            await AuditService.logUpdate(req.user, 'User', user._id, {}, { name, email, phone, status }, req);
+
             return ResponseHandler.success(res, 'User updated successfully', {
                 user: {
                     id: user._id,
@@ -183,7 +194,11 @@ class UserController {
 
             await user.deleteOne();
 
-            logger.info('User deleted', { userId: id });
+            // Log audit
+            await AuditService.logDelete(req.user, 'User', id, {
+                name: user.name,
+                email: user.email
+            }, req);
 
             return ResponseHandler.success(res, 'User deleted successfully');
         } catch (error) {

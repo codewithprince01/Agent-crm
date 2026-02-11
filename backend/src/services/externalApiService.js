@@ -12,6 +12,7 @@ class ExternalApiService {
     static async fetchCountries() {
         try {
             const response = await fetch(`${BASE_URL}/countries`);
+            if (response.status === 404) return { success: true, data: [] };
             if (!response.ok) throw new Error(`External API error: ${response.statusText}`);
             const data = await response.json();
             return data;
@@ -31,6 +32,7 @@ class ExternalApiService {
             if (website) url.searchParams.append('website', website);
 
             const response = await fetch(url.toString());
+            if (response.status === 404) return { success: true, data: [] };
             if (!response.ok) throw new Error(`External API error: ${response.statusText}`);
             const data = await response.json();
             return data;
@@ -47,6 +49,7 @@ class ExternalApiService {
     static async fetchLevels(universityId) {
         try {
             const response = await fetch(`${BASE_URL}/levels?university_id=${universityId}`);
+            if (response.status === 404) return { success: true, data: [] };
             if (!response.ok) throw new Error(`External API error: ${response.statusText}`);
             const data = await response.json();
             return data;
@@ -62,6 +65,7 @@ class ExternalApiService {
     static async fetchCategories(universityId, level) {
         try {
             const response = await fetch(`${BASE_URL}/categories?university_id=${universityId}&level=${level}`);
+            if (response.status === 404) return { success: true, data: [] };
             if (!response.ok) throw new Error(`External API error: ${response.statusText}`);
             const data = await response.json();
             return data;
@@ -76,7 +80,8 @@ class ExternalApiService {
      */
     static async fetchSpecializations(universityId, level, categoryId) {
         try {
-            const response = await fetch(`${BASE_URL}/categories?university_id=${universityId}&level=${level}&course_category_id=${categoryId}`);
+            const response = await fetch(`${BASE_URL}/specializations?university_id=${universityId}&level=${level}&course_category_id=${categoryId}`);
+            if (response.status === 404) return { success: true, data: [] };
             if (!response.ok) throw new Error(`External API error: ${response.statusText}`);
             const data = await response.json();
             return data;
@@ -97,6 +102,7 @@ class ExternalApiService {
             });
 
             const response = await fetch(url.toString());
+            if (response.status === 404) return { success: true, data: [] };
             if (!response.ok) throw new Error(`External API error: ${response.statusText}`);
             const data = await response.json();
             return data;

@@ -392,10 +392,10 @@ const StudentList = () => {
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col gap-1">
-                                                <a href={`mailto:${student.email}`} className="text-gray-700 text-sm hover:text-indigo-600">
+                                                <a className="text-gray-700 text-sm hover:text-indigo-600">
                                                     {student.email || 'N/A'}
                                                 </a>
-                                                <a href={`tel:${student.mobile}`} className="text-gray-500 text-xs hover:text-indigo-600">
+                                                <a className="text-gray-500 text-xs hover:text-indigo-600">
                                                     {student.mobile || 'N/A'}
                                                 </a>
                                             </div>

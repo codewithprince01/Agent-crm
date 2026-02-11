@@ -1,4 +1,4 @@
-const { Agent, User } = require('../models');
+const { Agent, User, Student, Application } = require('../models');
 const ResponseHandler = require('../utils/responseHandler');
 const AuditService = require('../services/auditService');
 const emailService = require('../services/emailService');
@@ -133,6 +133,13 @@ class AgentController {
           logger.error('Failed to send password setup email (Background)', { error: emailError.message, agentId: agent._id });
         });
 
+      // 6. Log audit
+      await AuditService.logCreate(req.user, 'Agent', agent._id, {
+        agentName: agent.name,
+        email: agent.email,
+        companyName: agent.company_name
+      }, req);
+
       return ResponseHandler.created(res, 'Agent created successfully. Password setup link sent via email.', { agent });
     } catch (error) {
       if (error.code === 11000) {
@@ -238,6 +245,9 @@ class AgentController {
       Object.assign(agent, updates);
       await agent.save();
 
+      // Log audit
+      await AuditService.logUpdate(req.user, 'Agent', agent._id, {}, updates, req);
+
       return ResponseHandler.success(res, 'Agent updated successfully', { agent });
     } catch (error) {
       if (error.code === 11000) {
@@ -262,6 +272,12 @@ class AgentController {
       }
 
       await agent.deleteOne();
+
+      // Log audit
+      await AuditService.logDelete(req.user, 'Agent', id, {
+        agentName: agent.name || `${agent.firstName} ${agent.lastName}`,
+        email: agent.email
+      }, req);
 
       return ResponseHandler.success(res, 'Agent deleted successfully');
     } catch (error) {
@@ -429,6 +445,60 @@ class AgentController {
     } catch (error) {
       logger.error('Toggle status error', { error: error.message });
       return ResponseHandler.serverError(res, 'Failed to update status', error);
+    }
+  }
+
+  /**
+   * Get agent dashboard statistics
+   * GET /api/agents/dashboard/stats
+   */
+  static async getDashboardStats(req, res) {
+    try {
+      const agentId = req.userId;
+
+      // Get student IDs for this agent once
+      const studentIds = await Student.find({ agentId }).distinct('_id');
+
+      // 1. Get totals and recent items
+      const [totalStudents, totalApplications, recentStudents, recentApplications] = await Promise.all([
+        Student.countDocuments({ agentId }),
+        Application.countDocuments({ studentId: { $in: studentIds } }),
+        Student.find({ agentId }).sort({ createdAt: -1 }).limit(5).select('firstName lastName email studentId status createdAt'),
+        Application.find({ studentId: { $in: studentIds } })
+          .populate('studentId', 'firstName lastName')
+          .sort({ createdAt: -1 })
+          .limit(5)
+      ]);
+
+      // 2. Get applications by stage
+      const stageStats = await Application.aggregate([
+        { $match: { studentId: { $in: studentIds } } },
+        { $group: { _id: '$stage', count: { $sum: 1 } } }
+      ]);
+
+      // 3. Get earnings summary (if payout model exists, otherwise mock or use commissions)
+      // For now, using the agent's stats field or a placeholder
+      const agent = await Agent.findById(agentId).select('stats');
+
+      const dashboardData = {
+        stats: {
+          totalStudents,
+          totalApplications,
+          totalEarnings: agent.stats?.lifetimeEarnings || 0,
+          pendingApplications: stageStats.find(s => s._id === 'Pre-Payment')?.count || 0,
+        },
+        recentStudents,
+        recentApplications,
+        stageBreakdown: stageStats.reduce((acc, curr) => {
+          acc[curr._id] = curr.count;
+          return acc;
+        }, {}),
+      };
+
+      return ResponseHandler.success(res, 'Dashboard statistics retrieved successfully', dashboardData);
+    } catch (error) {
+      logger.error('Get Agent Dashboard Stats Error', { error: error.message });
+      return ResponseHandler.serverError(res, 'Failed to fetch dashboard statistics', error);
     }
   }
 

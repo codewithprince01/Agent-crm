@@ -12,6 +12,7 @@ const Commission = require('./Commission');
 const Payout = require('./Payout');
 const AuditLog = require('./AuditLog');
 const Setting = require('./Setting');
+const Counter = require('./Counter');
 
 // No need to define associations in Mongoose
 // Relationships are handled via refs and populate()
@@ -27,5 +28,6 @@ module.exports = {
   Commission,
   Payout,
   AuditLog,
-  Setting
+  Setting,
+  Counter
 };

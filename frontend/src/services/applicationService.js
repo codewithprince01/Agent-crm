@@ -74,6 +74,18 @@ export const applicationService = {
     return applicationService.updateStatus(id, 'fee_paid', `Fee paid. Ref: ${paymentDetails?.reference || 'N/A'}`);
   },
 
+  // Get students without any applications
+  getPendingStudents: async () => {
+    const response = await apiClient.get('/applications/pending-students');
+    return response.data;
+  },
+
+  // Get students with existing applications
+  getAppliedStudents: async () => {
+    const response = await apiClient.get('/applications/applied-students');
+    return response.data;
+  },
+
   // Get status counts
   getStatusCounts: async () => {
     const response = await apiClient.get('/applications/stats/status-counts');

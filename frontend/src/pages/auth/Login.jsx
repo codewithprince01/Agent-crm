@@ -13,11 +13,13 @@ import Select from "../../components/common/Select";
 import Alert from "../../components/common/Alert";
 import { ROLES } from "../../utils/constants";
 import { selectSettings } from "../../store/slices/settingsSlice";
+import { useToast } from "../../components/ui/toast";
 import { Mail, Lock, UserCircle, ArrowLeft, ShieldCheck, ChevronRight } from "lucide-react";
 
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const toast = useToast();
   const { loading, error } = useSelector((state) => state.auth);
   const settings = useSelector(selectSettings);
   const [searchParams] = useSearchParams();
@@ -59,6 +61,7 @@ const Login = () => {
     try {
       const response = await authService.login(formData);
       dispatch(loginSuccess(response));
+      toast.success("Successfully Login");
       navigate("/dashboard");
     } catch (err) {
       dispatch(loginFailure(err.response?.data?.message || "Login failed"));

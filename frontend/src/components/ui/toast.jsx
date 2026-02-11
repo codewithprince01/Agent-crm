@@ -69,11 +69,14 @@ const Toast = ({ message, type, onClose }) => {
             <span className="text-xl font-bold">{icons[type]}</span>
             <p className="flex-1">{message}</p>
             <button
-                onClick={onClose}
-                className="text-white hover:text-gray-200 font-bold text-lg"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                }}
+                className="ml-4 p-2 -mr-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors flex items-center justify-center min-w-[32px] min-h-[32px] focus:outline-none"
                 aria-label="Close"
             >
-                ×
+                <span className="text-2xl leading-none">×</span>
             </button>
         </div>
     );

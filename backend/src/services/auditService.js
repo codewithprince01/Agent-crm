@@ -13,6 +13,8 @@ class AuditService {
         userRole: data.userRole || null,
         agentId: data.agentId || null,
         agentName: data.agentName || null,
+        studentId: data.studentId || null,
+        studentName: data.studentName || null,
         action: data.action,
         entityType: data.entityType,
         entityId: data.entityId || null,
@@ -27,6 +29,7 @@ class AuditService {
         auditId: auditLog._id,
         userId: data.userId,
         agentId: data.agentId,
+        studentId: data.studentId,
         action: data.action,
         entityType: data.entityType,
       });
@@ -49,16 +52,8 @@ class AuditService {
       userAgent: req.get('user-agent'),
     };
 
-    if (userType === 'Agent') {
-      data.agentId = user._id || user.id;
-      data.agentName = user.name || `${user.firstName} ${user.lastName}`;
-      data.userRole = 'AGENT';
-    } else {
-      data.userId = user._id || user.id;
-      data.userName = user.name;
-      data.userRole = user.role;
-    }
-    data.entityId = user._id || user.id;
+    this._populateActorData(data, user, userType);
+    data.entityId = user?._id || user?.id;
 
     return this.log(data);
   }
@@ -74,122 +69,143 @@ class AuditService {
       userAgent: req.get('user-agent'),
     };
 
-    if (userType === 'Agent') {
-      data.agentId = user._id || user.id;
-      data.agentName = user.name || `${user.firstName} ${user.lastName}`;
-      data.userRole = 'AGENT';
-    } else {
-      data.userId = user._id || user.id;
-      data.userName = user.name;
-      data.userRole = user.role;
-    }
-    data.entityId = user._id || user.id;
+    this._populateActorData(data, user, userType);
+    data.entityId = user?._id || user?.id;
 
     return this.log(data);
+  }
+
+  /**
+   * Helper to populate actor data based on user type
+   * @private
+   */
+  static _populateActorData(data, user, userType = 'User') {
+    if (!user) {
+      data.userName = 'System/Public';
+      data.userRole = 'GUEST';
+      return;
+    }
+
+    const isAgent = userType === 'Agent' || user.role === 'AGENT';
+    const isStudent = userType === 'Student' || user.role === 'STUDENT';
+
+    if (isAgent) {
+      data.agentId = user._id || user.id;
+      data.agentName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      data.userRole = 'AGENT';
+    } else if (isStudent) {
+      data.studentId = user._id || user.id;
+      data.studentName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      data.userRole = 'STUDENT';
+    } else {
+      data.userId = user._id || user.id;
+      data.userName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+      data.userRole = user.role || 'USER';
+    }
   }
 
   /**
    * Log create action
    */
   static async logCreate(user, entityType, entityId, newValues, req) {
-    return this.log({
-      userId: user._id || user.id,
-      userName: user.name,
-      userRole: user.role,
+    const data = {
       action: 'CREATE',
       entityType,
       entityId,
       newValues,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+      ipAddress: req?.ip,
+      userAgent: req?.get ? req.get('user-agent') : null,
+    };
+
+    this._populateActorData(data, user);
+    return this.log(data);
   }
 
   /**
    * Log update action
    */
   static async logUpdate(user, entityType, entityId, oldValues, newValues, req) {
-    return this.log({
-      userId: user._id || user.id,
-      userName: user.name,
-      userRole: user.role,
+    const data = {
       action: 'UPDATE',
       entityType,
       entityId,
       oldValues,
       newValues,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+      ipAddress: req?.ip,
+      userAgent: req?.get ? req.get('user-agent') : null,
+    };
+
+    this._populateActorData(data, user);
+    return this.log(data);
   }
 
   /**
    * Log delete action
    */
   static async logDelete(user, entityType, entityId, oldValues, req) {
-    return this.log({
-      userId: user._id || user.id,
-      userName: user.name,
-      userRole: user.role,
+    const data = {
       action: 'DELETE',
       entityType,
       entityId,
       oldValues,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+      ipAddress: req?.ip,
+      userAgent: req?.get ? req.get('user-agent') : null,
+    };
+
+    this._populateActorData(data, user);
+    return this.log(data);
   }
 
   /**
    * Log approval action
    */
   static async logApprove(user, entityType, entityId, details, req) {
-    return this.log({
-      userId: user._id || user.id,
-      userName: user.name,
-      userRole: user.role,
+    const data = {
       action: 'APPROVE',
       entityType,
       entityId,
       newValues: details,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+      ipAddress: req?.ip,
+      userAgent: req?.get ? req.get('user-agent') : null,
+    };
+
+    this._populateActorData(data, user);
+    return this.log(data);
   }
 
   /**
    * Log rejection action
    */
   static async logReject(user, entityType, entityId, details, req) {
-    return this.log({
-      userId: user._id || user.id,
-      userName: user.name,
-      userRole: user.role,
+    const data = {
       action: 'REJECT',
       entityType,
       entityId,
       newValues: details,
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+      ipAddress: req?.ip,
+      userAgent: req?.get ? req.get('user-agent') : null,
+    };
+
+    this._populateActorData(data, user);
+    return this.log(data);
   }
 
   /**
    * Log status change
    */
   static async logStatusChange(user, entityType, entityId, oldStatus, newStatus, req) {
-    return this.log({
-      userId: user._id || user.id,
-      userName: user.name,
-      userRole: user.role,
+    const data = {
       action: 'STATUS_CHANGE',
       entityType,
       entityId,
       oldValues: { status: oldStatus },
       newValues: { status: newStatus },
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+      ipAddress: req?.ip,
+      userAgent: req?.get ? req.get('user-agent') : null,
+    };
+
+    this._populateActorData(data, user);
+    return this.log(data);
   }
 }
 

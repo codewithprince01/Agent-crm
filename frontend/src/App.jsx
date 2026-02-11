@@ -5,7 +5,7 @@ import store from "./store";
 import ProtectedRoute from "./components/route/ProtectedRoute";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import { ROLES } from "./utils/constants";
-import { ToastProvider } from "./components/ui/toast";
+import { ToastProvider, useToast } from "./components/ui/toast";
 
 // Auth Pages
 import Login from "./pages/auth/Login";
@@ -73,6 +73,9 @@ import RequireReferral from "./components/guards/RequireReferral";
 import ApplicationList from "./pages/applications/ApplicationList";
 import ApplicationForm from "./pages/applications/ApplicationForm";
 import ApplicationDetails from "./pages/applications/ApplicationDetails";
+import AppliedStudents from "./pages/applications/AppliedStudents";
+import PendingStudents from "./pages/applications/PendingStudents";
+import ProgramSelectionFlow from "./pages/applications/ProgramSelectionFlow";
 
 // Commission Pages
 import CommissionList from "./pages/commissions/CommissionList";
@@ -95,6 +98,61 @@ import { useDispatch } from "react-redux";
 import { fetchSettings } from "./store/slices/settingsSlice";
 import { useEffect } from "react";
 
+
+// Network Error Management Component
+const NetworkErrorManager = () => {
+  const toast = useToast();
+  const lastErrorToastRef = React.useRef(0);
+  const lastStatusRef = React.useRef(navigator.onLine ? 'online' : 'offline');
+  const lastNotifyTimeRef = React.useRef(0);
+
+  useEffect(() => {
+    // 1. Handle Axios/API Network Errors
+    const handleApiError = (event) => {
+      const now = Date.now();
+      // Debounce: Only show one network error every 10 seconds
+      if (now - lastErrorToastRef.current < 10000) return;
+
+      const { message } = event.detail || {};
+      toast.error(message || 'Server Connection Failed. Please try again later.');
+      lastErrorToastRef.current = now;
+    };
+
+    // 2. Handle Browser Online/Offline Status with throttling
+    const notifyStatus = (status, type, message) => {
+      const now = Date.now();
+
+      // Notify if status changes OR if 10 seconds passed since last notification of same status
+      if (status !== lastStatusRef.current || (now - lastNotifyTimeRef.current >= 10000)) {
+        if (type === 'success') toast.success(message, 4000);
+        else toast.warning(message, 6000);
+
+        lastStatusRef.current = status;
+        lastNotifyTimeRef.current = now;
+      }
+    };
+
+    const handleOnline = () => {
+      notifyStatus('online', 'success', 'Back online! Connection restored.');
+    };
+
+    const handleOffline = () => {
+      notifyStatus('offline', 'warning', 'You are currently offline. Some features may not work.');
+    };
+
+    window.addEventListener('app:network-error', handleApiError);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('app:network-error', handleApiError);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [toast]);
+
+  return null; // Side-effect only component
+};
 
 function AppContent() {
   const dispatch = useDispatch();
@@ -401,6 +459,36 @@ function AppContent() {
           }
         />
         <Route
+          path="applied-students"
+          element={
+            <ProtectedRoute
+              allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.AGENT]}
+            >
+              <AppliedStudents />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="pending-applications"
+          element={
+            <ProtectedRoute
+              allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.AGENT]}
+            >
+              <PendingStudents />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="program-selection/:studentId"
+          element={
+            <ProtectedRoute
+              allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.AGENT]}
+            >
+              <ProgramSelectionFlow />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="applications/:id/edit"
           element={
             <ProtectedRoute
@@ -504,6 +592,7 @@ function App() {
   return (
     <Provider store={store}>
       <ToastProvider>
+        <NetworkErrorManager />
         <BrowserRouter>
           <AppContent />
         </BrowserRouter>

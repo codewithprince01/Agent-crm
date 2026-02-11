@@ -364,6 +364,35 @@ class EmailService {
     `;
     return this.sendEmail(student.email, subject, html);
   }
+
+  /**
+   * Send verification OTP for partner applications
+   */
+  async sendVerificationOTP(email, otp) {
+    const subject = 'Email Verification Code - Partner Program';
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #4F46E5; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h2 style="margin: 0;">Email Verification</h2>
+        </div>
+        <div style="padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 10px 10px;">
+          <p>Hello,</p>
+          <p>Thank you for your interest in our Partner Program. Please use the following code to verify your email address:</p>
+          
+          <div style="background-color: #F3F4F6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 12px; border: 2px dashed #4F46E5;">
+            <h1 style="margin: 0; font-size: 42px; letter-spacing: 12px; color: #4F46E5;">${otp}</h1>
+          </div>
+          
+          <p><strong>This code will expire in 10 minutes.</strong></p>
+          <p>If you didn't request this, please ignore this email.</p>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">
+          <p style="font-size: 14px; color: #6B7280;">Best regards,<br>University Team</p>
+        </div>
+      </div>
+    `;
+    return this.sendEmail(email, subject, html);
+  }
 }
 
 module.exports = new EmailService();

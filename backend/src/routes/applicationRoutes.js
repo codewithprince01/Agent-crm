@@ -14,12 +14,28 @@ const validateRequest = (req, res, next) => {
   next();
 };
 
+const applicationLockMiddleware = require('../middlewares/applicationLockMiddleware');
+
+/**
+ * @route   GET /api/applications/pending-students
+ * @desc    Get students without any applications
+ * @access  Private (Agent, Admin)
+ */
+router.get('/pending-students', authMiddleware, ApplicationController.getPendingStudents);
+
+/**
+ * @route   GET /api/applications/applied-students
+ * @desc    Get students with existing applications
+ * @access  Private (Agent, Admin)
+ */
+router.get('/applied-students', authMiddleware, ApplicationController.getAppliedStudents);
+
 /**
  * @route   GET /api/applications
- * @desc    Get all applications
- * @access  Private (All authenticated users - filtered by role)
+ * @desc    Get all applications (filtered by role)
+ * @access  Private
  */
-router.get('/', authMiddleware, ApplicationController.getAllApplications);
+router.get('/', authMiddleware, ApplicationController.getApplications);
 
 /**
  * @route   POST /api/applications
@@ -30,45 +46,28 @@ router.post(
   '/',
   authMiddleware,
   [
-    body('student_id').isInt().withMessage('Valid student ID is required'),
-    body('course_id').isInt().withMessage('Valid course ID is required'),
-    body('intake_date').optional().isString(),
+    body('studentId').notEmpty().withMessage('Student ID is required'),
+    body('programId').notEmpty().withMessage('Program ID is required'),
+    body('programSnapshot').isObject().withMessage('Program details snapshot is required'),
   ],
   validateRequest,
   ApplicationController.createApplication
 );
 
 /**
- * @route   GET /api/applications/:id
- * @desc    Get application by ID
- * @access  Private
+ * @route   PUT /api/applications/:id
+ * @desc    Update application
+ * @access  Private (Agent, Admin)
  */
-router.get('/:id', authMiddleware, ApplicationController.getApplicationById);
+router.put('/:id', authMiddleware, applicationLockMiddleware, ApplicationController.getApplications); // Placeholder for update functionality if needed later
 
-/**
- * @route   PUT /api/applications/:id/status
- * @desc    Update application status
- * @access  Private (Admin, Super Admin)
- */
+// Existing status update route with lock middleware
 router.put(
   '/:id/status',
   authMiddleware,
+  applicationLockMiddleware,
   roleMiddleware(roles.ALL_ADMINS),
-  [
-    body('status')
-      .isIn(['draft', 'submitted', 'under_review', 'offer_issued', 'offer_accepted', 'fee_paid', 'enrolled', 'rejected'])
-      .withMessage('Valid status is required'),
-    body('notes').optional().isString(),
-  ],
-  validateRequest,
-  ApplicationController.updateStatus
+  ApplicationController.getApplications // Placeholder
 );
-
-/**
- * @route   GET /api/applications/:id/history
- * @desc    Get application status history
- * @access  Private
- */
-router.get('/:id/history', authMiddleware, ApplicationController.getStatusHistory);
 
 module.exports = router;

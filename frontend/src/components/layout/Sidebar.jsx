@@ -12,15 +12,15 @@ import {
   FiGrid,
   FiUserCheck,
   FiTrendingUp,
-  FiLogOut,
   FiLock,
   FiSearch,
   FiHeart,
   FiBookOpen,
-  FiChevronDown,
   FiChevronUp,
 } from "react-icons/fi";
+import { FiChevronDown, FiLogOut } from "react-icons/fi";
 import { logout } from "../../store/slices/authSlice";
+import { authService } from "../../services/authService";
 import { ROLES } from "../../utils/constants";
 import {
   AlertDialog,
@@ -57,9 +57,15 @@ const Sidebar = ({ isOpen, onClose }) => {
     setShowLogoutConfirm(true);
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      dispatch(logout());
+      window.location.href = '/login';
+    }
   };
 
   const getMenuItems = () => {
@@ -76,14 +82,24 @@ const Sidebar = ({ isOpen, onClose }) => {
               { path: "/agent-application", label: "Agent Applications" },
             ],
           },
-          { path: "/students", icon: FiUserCheck, label: "Students" },
+          { path: "/students", icon: FiUserCheck, label: "Students List" },
+          {
+            label: "Student Applications",
+            icon: FiFileText,
+            subItems: [
+              { path: "/applied-students", label: "Applied Students" },
+              { path: "/pending-applications", label: "Pending Applications" },
+            ],
+          },
           { path: "/commissions", icon: FiDollarSign, label: "Commissions" },
           { path: "/payouts", icon: FiTrendingUp, label: "Payouts" },
           { path: "/staff", icon: FiUsers, label: "Staff Management" },
           { path: "/roles-permissions", icon: FiShield, label: "Roles & Permissions" },
           { path: "/audit-logs", icon: FiShield, label: "Audit Logs" },
+          { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
           { path: "/settings", icon: FiSettings, label: "Settings" },
+          { icon: FiLogOut, label: "Logout", onClick: handleLogoutConfirm },
         ];
 
       case ROLES.ADMIN:
@@ -97,7 +113,15 @@ const Sidebar = ({ isOpen, onClose }) => {
               { path: "/agent-application", label: "Agent Applications" },
             ],
           },
-          { path: "/students", icon: FiUserCheck, label: "Students" },
+          { path: "/students", icon: FiUserCheck, label: "Students List" },
+          {
+            label: "Student Applications",
+            icon: FiFileText,
+            subItems: [
+              { path: "/applied-students", label: "Applied Students" },
+              { path: "/pending-applications", label: "Pending Applications" },
+            ],
+          },
           { path: "/commissions", icon: FiDollarSign, label: "Commissions" },
           { path: "/payouts", icon: FiTrendingUp, label: "Payouts" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
@@ -107,9 +131,19 @@ const Sidebar = ({ isOpen, onClose }) => {
         return [
           { path: "/dashboard", icon: FiHome, label: "Dashboard" },
           { path: "/students", icon: FiUserCheck, label: "My Students" },
+          {
+            label: "Student Applications",
+            icon: FiFileText,
+            subItems: [
+              { path: "/applied-students", label: "Applied Students" },
+              { path: "/pending-applications", label: "Pending Applications" },
+            ],
+          },
           { path: "/earnings", icon: FiDollarSign, label: "Earnings" },
           { path: "/payouts", icon: FiTrendingUp, label: "Payouts" },
+          { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
+          { icon: FiLogOut, label: "Logout", onClick: handleLogoutConfirm },
         ];
 
       case ROLES.STUDENT:
@@ -119,7 +153,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           { onClick: () => { }, icon: FiHeart, label: "Shortlisted Colleges" },
           { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
-          { path: "/logout", icon: FiLogOut, label: "Logout", onClick: handleLogoutConfirm },
+          { icon: FiLogOut, label: "Logout", onClick: handleLogoutConfirm },
         ];
 
       default:

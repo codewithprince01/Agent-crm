@@ -1,24 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-    User,
-    Building,
-    Mail,
-    Phone,
-    Globe,
-    FileText,
-    AlertCircle,
-    Briefcase,
-    GraduationCap,
-    Award,
-    Calendar,
-    Target,
-    Send,
-    ArrowLeft,
-    Save,
-    Lock,
-    Eye,
-    EyeOff
+    ArrowLeft, Save, ArrowRight, Check, AlertCircle,
+    User, Building, Mail, Phone, Globe, FileText,
+    Briefcase, GraduationCap, Award, Calendar,
+    Target, Lock, Eye, EyeOff
 } from 'lucide-react';
 import agentService from '../../services/agentService';
 import { useToast } from '../../components/ui/toast';
@@ -26,7 +12,7 @@ import { useToast } from '../../components/ui/toast';
 const AdminEditAgent = () => {
     const navigate = useNavigate();
     const { id } = useParams();
-    const { toast } = useToast();
+    const toast = useToast();
 
     // Initial State must match Schema keys
     const [formData, setFormData] = useState({
@@ -67,6 +53,7 @@ const AdminEditAgent = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [touched, setTouched] = useState({});
     const [errors, setErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
 
@@ -76,9 +63,7 @@ const AdminEditAgent = () => {
     useEffect(() => {
         const fetchAgent = async () => {
             try {
-                // Ensure id is present
                 if (!id) return;
-
                 const response = await agentService.getAgentById(id);
                 const agent = response.data?.agent || response.agent || response.data || response;
 
@@ -86,83 +71,115 @@ const AdminEditAgent = () => {
                     setFormData(prev => ({
                         ...prev,
                         ...agent,
-                        // Ensure arrays are arrays
-                        specialization: typeof agent.specialization === 'string' ? JSON.parse(agent.specialization || '[]') : (agent.specialization || []),
-                        servicesOffered: typeof agent.servicesOffered === 'string' ? JSON.parse(agent.servicesOffered || '[]') : (agent.servicesOffered || [])
+                        specialization: Array.isArray(agent.specialization) ? agent.specialization : (typeof agent.specialization === 'string' ? JSON.parse(agent.specialization || '[]') : []),
+                        servicesOffered: Array.isArray(agent.servicesOffered) ? agent.servicesOffered : (typeof agent.servicesOffered === 'string' ? JSON.parse(agent.servicesOffered || '[]') : [])
                     }));
                 }
             } catch (error) {
                 console.error("Failed to fetch agent", error);
-                toast({ title: "Error", description: "Failed to load agent details", variant: "destructive" });
+                toast.error("Failed to load agent details");
             } finally {
                 setIsLoading(false);
             }
         };
-
         fetchAgent();
-    }, [id, toast]);
+    }, [id]);
 
-    const validateField = (name, value) => {
-        let error = '';
-        if (name === 'email') {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(value)) {
-                error = 'Please enter a valid email address';
+    const validate = (data) => {
+        const newErrors = {};
+        if (currentStep >= 1) {
+            if (!data.firstName?.trim()) newErrors.firstName = 'First name is required';
+            if (!data.lastName?.trim()) newErrors.lastName = 'Last name is required';
+            if (!data.email?.trim()) {
+                newErrors.email = 'Email is required';
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+                newErrors.email = 'Enter a valid email address';
+            }
+            if (!data.phone?.trim()) {
+                newErrors.phone = 'Phone number is required';
+            } else if (!/^\d{10,}$/.test(data.phone.replace(/\D/g, ''))) {
+                newErrors.phone = 'Minimum 10 digits required';
             }
         }
-        if (name === 'phone' || name === 'alternatePhone') {
-            if (value && !/^\d+$/.test(value)) {
-                error = 'Phone number must contain only digits';
-            } else if (value && value.length < 10) {
-                error = 'Phone number must be at least 10 digits';
+        if (currentStep >= 2) {
+            if (!data.companyName?.trim()) newErrors.companyName = 'Company name is required';
+            if (!data.companyType) newErrors.companyType = 'Type is required';
+            if (!data.establishedYear) {
+                newErrors.establishedYear = 'Year is required';
+            } else {
+                const year = parseInt(data.establishedYear);
+                const currentYear = new Date().getFullYear();
+                if (year > currentYear) {
+                    newErrors.establishedYear = `Cannot be in the future (max ${currentYear})`;
+                } else if (year < 1900) {
+                    newErrors.establishedYear = 'Enter a valid year';
+                }
             }
+            if (!data.address?.trim()) newErrors.address = 'Address is required';
         }
-        return error;
+        if (currentStep >= 3) {
+            // Arrays are validated here
+        }
+        if (currentStep >= 4) {
+            if (!data.partnershipType) newErrors.partnershipType = 'Required';
+            if (!data.whyPartner?.trim()) newErrors.whyPartner = 'Motivation is required';
+        }
+        return newErrors;
     };
 
-    const handleInputChange = (field, value) => {
-        const error = validateField(field, value);
-        setErrors(prev => ({ ...prev, [field]: error }));
+    useEffect(() => {
+        setErrors(validate(formData));
+    }, [formData, currentStep]);
 
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
+    const handleInputChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleArrayChange = (field, value, checked) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: checked
-                ? [...prev[field], value]
-                : prev[field].filter(item => item !== value)
-        }));
+        const updated = checked
+            ? [...formData[field], value]
+            : formData[field].filter(item => item !== value);
+        setFormData(prev => ({ ...prev, [field]: updated }));
+    };
+
+    const canMoveToNextStep = () => {
+        const stepErrors = validate(formData);
+        const currentStepFields = {
+            1: ['firstName', 'lastName', 'email', 'phone'],
+            2: ['companyName', 'companyType', 'establishedYear', 'address'],
+            3: [],
+            4: ['partnershipType', 'whyPartner'],
+            5: []
+        };
+
+        const stepFields = currentStepFields[currentStep];
+        const hasErrors = stepFields.some(field => stepErrors[field]);
+
+        if (hasErrors) {
+            const newTouched = { ...touched };
+            stepFields.forEach(f => newTouched[f] = true);
+            setTouched(newTouched);
+            toast.error("Please fill required fields");
+            return false;
+        }
+        return true;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Prevent submission if not on the last step
         if (currentStep !== totalSteps) {
-            nextStep();
-            return;
-        }
-
-        if (errors.email || errors.phone) {
-            toast({ title: "Validation Error", description: "Please fix errors before submitting", variant: "destructive" });
+            if (canMoveToNextStep()) nextStep();
             return;
         }
 
         setIsSubmitting(true);
-
         try {
             await agentService.updateAgent(id, formData);
-            toast({ title: "Success", description: "Agent updated successfully!" });
+            toast.success("Agent updated successfully!");
             navigate('/agents');
         } catch (error) {
-            console.error("Update error:", error);
             const msg = error.response?.data?.message || 'Failed to update agent.';
-            toast({ title: "Error", description: msg, variant: "destructive" });
+            toast.error(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -171,14 +188,24 @@ const AdminEditAgent = () => {
     const nextStep = () => {
         if (currentStep < totalSteps) {
             setCurrentStep(currentStep + 1);
+            window.scrollTo(0, 0);
         }
     };
 
     const prevStep = () => {
         if (currentStep > 1) {
             setCurrentStep(currentStep - 1);
+            window.scrollTo(0, 0);
         }
     };
+
+    const steps = [
+        { number: 1, title: 'Personal Info' },
+        { number: 2, title: 'Company Info' },
+        { number: 3, title: 'Specialization' },
+        { number: 4, title: 'Partnership' },
+        { number: 5, title: 'Confirmation' }
+    ];
 
     const states = [
         'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat',
@@ -189,412 +216,316 @@ const AdminEditAgent = () => {
 
     const specializationOptions = [
         'MBBS Admissions', 'Medical Counseling', 'Visa Assistance', 'International Admissions',
-        'Student Support', 'Career Guidance', 'NEET Coaching', 'Abroad Studies', 'Scholarship Guidance',
-        'University Partnerships', 'Student Mentoring', 'Documentation', 'Pre-departure Support'
+        'Student Support', 'Career Guidance', 'NEET Coaching', 'Abroad Studies'
     ];
 
-    const servicesOptions = [
-        'Admission Counseling', 'Visa Processing', 'Accommodation Assistance', 'Travel Arrangements',
-        'Document Verification', 'Scholarship Guidance', 'Career Counseling', 'Test Preparation',
-        'University Selection', 'Application Processing', 'Financial Planning', 'Post-arrival Support'
-    ];
+    // Helper to render input matching StudentForm style
+    const renderField = (label, name, type = 'text', required = true) => (
+        <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            <input
+                type={type}
+                name={name}
+                value={formData[name]}
+                onChange={(e) => handleInputChange(name, e.target.value)}
+                onBlur={() => setTouched(prev => ({ ...prev, [name]: true }))}
+                className={`w-full border rounded-lg p-3 outline-none transition ${touched[name] && errors[name]
+                    ? 'border-red-500 ring-1 ring-red-200'
+                    : 'border-gray-300 focus:ring-2 focus:ring-indigo-500'
+                    }`}
+            />
+            {touched[name] && errors[name] && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} /> {errors[name]}
+                </p>
+            )}
+        </div>
+    );
 
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading agent data...</p>
+                <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-indigo-600 font-semibold animate-pulse">Loading Agent Profile...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Header */}
-                <div className="mb-6 flex items-center">
-                    <button onClick={() => navigate('/agents')} className="mr-4 text-gray-600 hover:text-gray-900">
-                        <ArrowLeft className="w-6 h-6" />
+        <div className="p-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/agents')}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                        <ArrowLeft size={24} className="text-gray-700" />
                     </button>
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Edit Agent</h1>
-                        <p className="text-gray-600">Update agent profile and information</p>
+                        <p className="text-gray-600 text-sm mt-1 font-medium italic">
+                            Step {currentStep} of {totalSteps} - {steps[currentStep - 1].title}
+                        </p>
                     </div>
                 </div>
+            </div>
 
-                {/* Progress Bar */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-center sm:justify-between mb-4 flex-wrap">
-                        {[1, 2, 3, 4, 5].map((step) => (
-                            <div key={step} className="flex items-center">
-                                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${step <= currentStep
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-600'
+            {/* Progress Steps */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                <div className="flex items-center justify-between">
+                    {steps.map((step, index) => (
+                        <React.Fragment key={step.number}>
+                            <div className="flex flex-col items-center">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all ${currentStep > step.number
+                                    ? 'bg-green-500 text-white'
+                                    : currentStep === step.number
+                                        ? 'bg-indigo-600 text-white ring-4 ring-indigo-200'
+                                        : 'bg-gray-200 text-gray-500'
                                     }`}>
-                                    {step}
+                                    {currentStep > step.number ? <Check size={20} /> : step.number}
                                 </div>
-                                {step < 5 && (
-                                    <div className={`flex-1 h-1 mx-1 sm:mx-2 ${step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
-                                        } w-8 sm:w-12 md:w-16`} />
-                                )}
+                                <span className={`text-sm mt-2 font-medium ${currentStep === step.number ? 'text-indigo-600' : 'text-gray-500'}`}>
+                                    {step.title}
+                                </span>
                             </div>
-                        ))}
-                    </div>
+                            {index < steps.length - 1 && (
+                                <div className={`flex-1 h-1 mx-4 rounded transition-all ${currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
+                                    }`} />
+                            )}
+                        </React.Fragment>
+                    ))}
                 </div>
+            </div>
 
-                {/* Form */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                    <form onSubmit={handleSubmit}>
-                        {/* Step 1: Personal Information */}
-                        {currentStep === 1 && (
-                            <div className="space-y-6">
-                                <div className="flex items-center mb-6">
-                                    <User className="w-6 h-6 text-blue-600 mr-3" />
-                                    <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.firstName}
-                                            onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.lastName}
-                                            onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="email"
-                                                required
-                                                value={formData.email}
-                                                onChange={(e) => handleInputChange('email', e.target.value)}
-                                                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
-                                        <div className="relative">
-                                            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type="tel"
-                                                required
-                                                value={formData.phone}
-                                                onChange={(e) => handleInputChange('phone', e.target.value)}
-                                                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* More fields skipped for brevity but logic is same as Create */}
-                                {/* Need to include all fields to avoid data loss */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Alternate Phone</label>
-                                    <input
-                                        type="tel"
-                                        value={formData.alternatePhone}
-                                        onChange={(e) => handleInputChange('alternatePhone', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                                    />
-                                </div>
-
-                                {/* Password Change Field (Admin Only) */}
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                    <div className="flex items-center mb-2">
-                                        <Lock className="w-5 h-5 text-yellow-600 mr-2" />
-                                        <span className="text-sm font-medium text-yellow-900">Change Agent Password (Optional)</span>
-                                    </div>
-                                    <p className="text-xs text-yellow-700 mb-3">Leave blank to keep current password</p>
-                                    <div className="relative">
-                                        <input
-                                            type={showPassword ? 'text' : 'password'}
-                                            value={formData.newPassword}
-                                            onChange={(e) => handleInputChange('newPassword', e.target.value)}
-                                            placeholder="Enter new password (min 8 chars)"
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                        >
-                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                        </button>
-                                    </div>
-                                    {formData.newPassword && (
-                                        <p className="mt-2 text-xs text-gray-600">
-                                            Password must: 8+ chars, uppercase, lowercase, number, special char
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
-                                        <input
-                                            type="text"
-                                            value={formData.designation}
-                                            onChange={(e) => handleInputChange('designation', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Experience</label>
-                                        <select
-                                            value={formData.experience}
-                                            onChange={(e) => handleInputChange('experience', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                                        >
-                                            <option value="">Select</option>
-                                            <option value="1-2 years">1-2 years</option>
-                                            <option value="3-5 years">3-5 years</option>
-                                            <option value="6-10 years">6-10 years</option>
-                                            <option value="15+ years">15+ years</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
-                                    <input
-                                        type="text"
-                                        value={formData.qualification}
-                                        onChange={(e) => handleInputChange('qualification', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 2: Company Information */}
-                        {currentStep === 2 && (
-                            <div className="space-y-6">
-                                <div className="flex items-center mb-6">
-                                    <Building className="w-6 h-6 text-blue-600 mr-3" />
-                                    <h2 className="text-2xl font-bold text-gray-900">Company Information</h2>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
-                                    <input type="text" required value={formData.companyName} onChange={e => handleInputChange('companyName', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                                        <select value={formData.companyType} onChange={e => handleInputChange('companyType', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                            <option value="">Select</option>
-                                            <option value="Private Limited">Private Limited</option>
-                                            <option value="Proprietorship">Proprietorship</option>
-                                            {/* ... others */}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Reg. Number</label>
-                                        <input type="text" value={formData.registrationNumber} onChange={e => handleInputChange('registrationNumber', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Est. Year</label>
-                                        <input type="number" value={formData.establishedYear} onChange={e => handleInputChange('establishedYear', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
-                                        <input type="url" value={formData.website} onChange={e => handleInputChange('website', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                                    <textarea value={formData.address} onChange={e => handleInputChange('address', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                                </div>
-                                <div className="grid grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                                        <input type="text" value={formData.city} onChange={e => handleInputChange('city', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-                                        <select value={formData.state} onChange={e => handleInputChange('state', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                            <option value="">Select</option>
-                                            {states.map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Pincode</label>
-                                        <input type="text" value={formData.pincode} onChange={e => handleInputChange('pincode', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 3: Specialization */}
-                        {currentStep === 3 && (
-                            <div className="space-y-6">
-                                <div className="flex items-center mb-6">
-                                    <Target className="w-6 h-6 text-blue-600 mr-3" />
-                                    <h2 className="text-2xl font-bold text-gray-900">Specialization</h2>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-4">Areas</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {specializationOptions.map(spec => (
-                                            <label key={spec} className="flex items-center p-2 border rounded hover:bg-gray-50">
-                                                <input type="checkbox" checked={formData.specialization.includes(spec)} onChange={e => handleArrayChange('specialization', spec, e.target.checked)} className="mr-2" />
-                                                <span className="text-sm">{spec}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-4">Services</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {servicesOptions.map(s => (
-                                            <label key={s} className="flex items-center p-2 border rounded hover:bg-gray-50">
-                                                <input type="checkbox" checked={formData.servicesOffered.includes(s)} onChange={e => handleArrayChange('servicesOffered', s, e.target.checked)} className="mr-2" />
-                                                <span className="text-sm">{s}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Students</label>
-                                        <select value={formData.currentStudents} onChange={e => handleInputChange('currentStudents', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                            <option value="">Select</option>
-                                            <option value="1-50">1-50</option>
-                                            <option value="51-100">51-100</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Team</label>
-                                        <select value={formData.teamSize} onChange={e => handleInputChange('teamSize', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                            <option value="">Select</option>
-                                            <option value="1-5">1-5</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Revenue</label>
-                                        <select value={formData.annualRevenue} onChange={e => handleInputChange('annualRevenue', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                            <option value="">Select</option>
-                                            <option value="10-25 Lakhs">10-25 Lakhs</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 4: Partnership */}
-                        {currentStep === 4 && (
-                            <div className="space-y-6">
-                                <div className="flex items-center mb-6">
-                                    <Award className="w-6 h-6 text-blue-600 mr-3" />
-                                    <h2 className="text-2xl font-bold text-gray-900">Partnership</h2>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                                    <select value={formData.partnershipType} onChange={e => handleInputChange('partnershipType', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
+            {/* Form Content */}
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+                <form onSubmit={handleSubmit}>
+                    {currentStep === 1 && (
+                        <div className="space-y-6">
+                            <h3 className="text-2xl font-semibold text-indigo-700 mb-6">👤 Personal Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {renderField('First Name', 'firstName')}
+                                {renderField('Last Name', 'lastName')}
+                                {renderField('Email Address', 'email', 'email')}
+                                {renderField('Phone Number', 'phone', 'tel')}
+                                {renderField('Designation', 'designation')}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Experience</label>
+                                    <select
+                                        value={formData.experience}
+                                        onChange={(e) => handleInputChange('experience', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
                                         <option value="">Select</option>
-                                        <option value="Referral Partner">Referral Partner</option>
-                                        {/* ... */}
+                                        <option value="1-2 years">1-2 years</option>
+                                        <option value="3-5 years">3-5 years</option>
+                                        <option value="6-10 years">6-10 years</option>
+                                        <option value="15+ years">15+ years</option>
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Expected Students</label>
-                                        <select value={formData.expectedStudents} onChange={e => handleInputChange('expectedStudents', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                            <option value="">Select</option>
-                                            <option value="10-25">10-25</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Budget</label>
-                                        <select value={formData.marketingBudget} onChange={e => handleInputChange('marketingBudget', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg">
-                                            <option value="">Select</option>
-                                            <option value="1-5 Lakhs">1-5 Lakhs</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div><label>Why Partner</label><textarea value={formData.whyPartner} onChange={e => handleInputChange('whyPartner', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" /></div>
-                                <div><label>References</label><textarea value={formData.references} onChange={e => handleInputChange('references', e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" /></div>
                             </div>
-                        )}
-
-                        {/* Step 5: Submit */}
-                        {currentStep === 5 && (
-                            <div className="space-y-6">
-                                <div className="flex items-center mb-6">
-                                    <FileText className="w-6 h-6 text-blue-600 mr-3" />
-                                    <h2 className="text-2xl font-bold text-gray-900">Review & Update</h2>
+                            {/* Password Change Field (Admin Only) */}
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mt-4">
+                                <div className="flex items-center mb-3">
+                                    <Lock className="w-5 h-5 text-amber-600 mr-2" />
+                                    <span className="text-sm font-bold text-amber-900 uppercase tracking-wide">Change Password (Optional)</span>
                                 </div>
-
-                                <div className="bg-gray-50 rounded-lg p-6 mb-4">
-                                    <h3 className="text-lg font-semibold mb-2">Summary</h3>
-                                    <p>Name: {formData.firstName} {formData.lastName}</p>
-                                    <p>Company: {formData.companyName}</p>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={formData.newPassword}
+                                        onChange={(e) => handleInputChange('newPassword', e.target.value)}
+                                        placeholder="Enter new credentials"
+                                        className="w-full px-4 py-3 bg-white border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none pr-12 text-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 hover:text-amber-600 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
                                 </div>
+                                <p className="mt-2 text-[11px] text-amber-700 font-medium italic">Leave blank to keep existing password.</p>
+                            </div>
+                        </div>
+                    )}
 
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    <div className="flex items-start">
-                                        <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3" />
-                                        <div className="text-sm text-blue-800">
-                                            <p className="font-medium mb-1">Update Agent Profile:</p>
-                                            <p>This will update the agent's information in the database directly. No email will be sent.</p>
-                                        </div>
+                    {currentStep === 2 && (
+                        <div>
+                            <h3 className="text-2xl font-semibold text-indigo-700 mb-6">🏢 Company Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {renderField('Company Name', 'companyName')}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Type</label>
+                                    <select
+                                        value={formData.companyType}
+                                        onChange={(e) => handleInputChange('companyType', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        <option value="">Select</option>
+                                        <option value="Private Limited">Private Limited</option>
+                                        <option value="Proprietorship">Proprietorship</option>
+                                        <option value="Partnership">Partnership</option>
+                                    </select>
+                                </div>
+                                {renderField('Established Year', 'establishedYear', 'number')}
+                                {renderField('Website', 'website', 'url')}
+                                {renderField('City', 'city')}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                                    <select
+                                        value={formData.state}
+                                        onChange={(e) => handleInputChange('state', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        <option value="">Select State</option>
+                                        {states.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                                {renderField('Pincode', 'pincode')}
+                                {renderField('Country', 'country')}
+                            </div>
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Office Address</label>
+                                <textarea
+                                    value={formData.address}
+                                    onChange={(e) => handleInputChange('address', e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg p-3 h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 3 && (
+                        <div>
+                            <h3 className="text-2xl font-semibold text-indigo-700 mb-6">🎯 Specialization</h3>
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                {specializationOptions.map(spec => (
+                                    <label key={spec} className={`flex items-center p-3 border rounded-xl transition-all cursor-pointer ${formData.specialization.includes(spec) ? 'bg-indigo-50 border-indigo-200' : 'hover:bg-gray-50 border-gray-100'}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.specialization.includes(spec)}
+                                            onChange={(e) => handleArrayChange('specialization', spec, e.target.checked)}
+                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        />
+                                        <span className={`ml-3 text-xs font-bold ${formData.specialization.includes(spec) ? 'text-indigo-700' : 'text-gray-600'}`}>{spec}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 4 && (
+                        <div>
+                            <h3 className="text-2xl font-semibold text-indigo-700 mb-6">🤝 Partnership</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Partnership Type</label>
+                                    <select
+                                        value={formData.partnershipType}
+                                        onChange={(e) => handleInputChange('partnershipType', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        <option value="">Select</option>
+                                        <option value="Authorized Representative">Authorized Representative</option>
+                                        <option value="Franchise Partner">Franchise Partner</option>
+                                        <option value="Referral Partner">Referral Partner</option>
+                                    </select>
+                                </div>
+                                {renderField('Expected Students (Annual)', 'expectedStudents', 'number')}
+                            </div>
+                            <div className="grid grid-cols-1 gap-6 mt-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Why partner with us?</label>
+                                    <textarea
+                                        value={formData.whyPartner}
+                                        onChange={(e) => handleInputChange('whyPartner', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg p-3 h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Business References</label>
+                                    <textarea
+                                        value={formData.references}
+                                        onChange={(e) => handleInputChange('references', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-lg p-3 h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 5 && (
+                        <div>
+                            <h3 className="text-2xl font-semibold text-indigo-700 mb-6">✅ Review and Update</h3>
+                            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Primary Contact</h4>
+                                        <p className="text-lg font-bold text-gray-900">{formData.firstName} {formData.lastName}</p>
+                                        <p className="text-gray-600 font-medium">{formData.email}</p>
+                                        <p className="text-gray-600 font-medium">{formData.phone}</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Organization</h4>
+                                        <p className="text-lg font-bold text-gray-900">{formData.companyName}</p>
+                                        <p className="text-gray-600 font-medium">{formData.partnershipType}</p>
                                     </div>
                                 </div>
                             </div>
-                        )}
+                            <div className="mt-8 p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex items-start gap-3">
+                                <AlertCircle className="text-indigo-600 mt-0.5" size={20} />
+                                <p className="text-sm text-indigo-800 font-medium font-italic">
+                                    Confirm the changes above. This will update the agent's profile in real-time.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
-                        {/* Navigation */}
-                        <div className="flex justify-between pt-8 border-t border-gray-200">
-                            <button
-                                type="button"
-                                onClick={prevStep}
-                                disabled={currentStep === 1}
-                                className={`px-6 py-3 rounded-lg font-medium ${currentStep === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                            >
-                                Previous
-                            </button>
-
-                            {currentStep < totalSteps ? (
+                    {/* Navigation */}
+                    <div className="flex justify-between mt-8 pt-6 border-t font-medium">
+                        <button
+                            type="button"
+                            onClick={prevStep}
+                            disabled={currentStep === 1 || isSubmitting}
+                            className={`px-8 py-3 rounded-lg transition-all ${currentStep === 1
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                        >
+                            Previous
+                        </button>
+                        <div className="flex gap-3">
+                            {currentStep < 5 ? (
                                 <button
                                     type="button"
-                                    onClick={nextStep}
-                                    className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                    onClick={() => canMoveToNextStep() && nextStep()}
+                                    className="px-10 py-3 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-lg flex items-center gap-2"
                                 >
-                                    Next Step
+                                    Next Step <ArrowRight size={18} />
                                 </button>
                             ) : (
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className={`px-8 py-3 rounded-lg font-medium flex items-center ${isSubmitting ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                                    className={`px-12 py-3 rounded-lg text-white font-bold shadow-lg flex items-center gap-2 transition-all ${isSubmitting
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-green-600 hover:bg-green-700'
+                                        }`}
                                 >
-                                    {isSubmitting ? 'Updating...' : <><Save className="w-4 h-4 mr-2" /> Update Agent</>}
+                                    <Check size={18} />
+                                    {isSubmitting ? 'Updating...' : 'Update Agent'}
                                 </button>
                             )}
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     );

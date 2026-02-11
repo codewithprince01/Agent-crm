@@ -2,6 +2,12 @@ const { Agent } = require('../models');
 const ResponseHandler = require('../utils/responseHandler');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
+const otpGenerator = require('../utils/otpGenerator');
+const emailService = require('../services/emailService');
+
+// In-memory OTP storage for simplicity in public registration
+// For production, this should ideally be in Redis or a DB collection
+const otpStore = new Map();
 
 class InquiryController {
     /**
@@ -159,6 +165,74 @@ class InquiryController {
         } catch (error) {
             console.error('Partner Application Error:', error);
             return ResponseHandler.serverError(res, 'Failed to submit application. Please try again later.', error);
+        }
+    }
+
+    /**
+     * Send Verification OTP
+     * POST /api/inquiry/send-otp
+     */
+    static async sendVerificationOTP(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return ResponseHandler.badRequest(res, 'Email is required');
+            }
+
+            // Check if email is already registered/pending
+            const existingAgent = await Agent.findOne({ email });
+            if (existingAgent) {
+                return ResponseHandler.badRequest(res, 'This email is already registered or has a pending application.');
+            }
+
+            const otp = otpGenerator.generateOTP();
+            const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+            otpStore.set(email, { otp, expires });
+
+            await emailService.sendVerificationOTP(email, otp);
+
+            return ResponseHandler.success(res, 'Verification code sent to your email.');
+        } catch (error) {
+            console.error('Send OTP Error:', error);
+            return ResponseHandler.serverError(res, 'Failed to send verification code.', error);
+        }
+    }
+
+    /**
+     * Verify OTP
+     * POST /api/inquiry/verify-otp
+     */
+    static async verifyOTP(req, res) {
+        try {
+            const { email, otp } = req.body;
+            if (!email || !otp) {
+                return ResponseHandler.badRequest(res, 'Email and OTP are required');
+            }
+
+            const stored = otpStore.get(email);
+            if (!stored) {
+                return ResponseHandler.badRequest(res, 'No verification code found for this email.');
+            }
+
+            if (Date.now() > stored.expires) {
+                otpStore.delete(email);
+                return ResponseHandler.badRequest(res, 'Verification code has expired.');
+            }
+
+            if (stored.otp !== otp) {
+                return ResponseHandler.badRequest(res, 'Invalid verification code.');
+            }
+
+            // Success - mark as verified in store so it can be checked during final submission if needed
+            // Or just return success. For now, we'll return success and the frontend will proceed.
+            // Ideally, we'd sign a short-lived token here to prove verification during submitPartnerApplication.
+            stored.verified = true;
+
+            return ResponseHandler.success(res, 'Email verified successfully.');
+        } catch (error) {
+            console.error('Verify OTP Error:', error);
+            return ResponseHandler.serverError(res, 'Failed to verify code.', error);
         }
     }
 }

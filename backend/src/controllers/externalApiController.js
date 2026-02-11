@@ -11,15 +11,17 @@ class ExternalApiController {
             const responseData = await ExternalApiService.fetchCountries();
             const data = responseData.data || [];
 
-            // If user is AGENT, filter countries
+            // If user is AGENT, strictly filter by assigned countries
             if (req.userRole === 'AGENT') {
                 const allowedCountries = req.user.accessibleCountries || [];
+
+                // Filter even if allowedCountries is empty, resulting in [] as desired
                 const filteredCountries = data.filter(c =>
                     allowedCountries.includes(c.name) ||
-                    allowedCountries.includes(c.website) || // Use website instead of code
+                    allowedCountries.includes(c.website) ||
                     allowedCountries.some(ac => c.name.toLowerCase() === ac.toLowerCase())
                 );
-                return ResponseHandler.success(res, 'Restricted countries retrieved', filteredCountries);
+                return ResponseHandler.success(res, 'Agent specific countries retrieved', filteredCountries);
             }
 
             return ResponseHandler.success(res, 'All countries retrieved', data);
@@ -43,20 +45,26 @@ class ExternalApiController {
                 const allowedCountries = req.user.accessibleCountries || [];
                 const allowedUnivs = req.user.accessibleUniversities || [];
 
-                // 1. Filter by countries first (if universities list has country field)
-                // Note: The API might already filter by website/country if passed
-                if (allowedCountries.length > 0 && !website) {
-                    // This is complex because we don't have country field in universities list always
-                    // But if website was passed, API already filtered.
+                // 1. Strict Country check: If a country (website) was requested, check if it's in allowedCountries
+                if (website) {
+                    const isCountryAllowed = allowedCountries.some(ac =>
+                        ac.toLowerCase() === website.toLowerCase()
+                    );
+                    if (!isCountryAllowed && allowedCountries.length > 0) {
+                        return ResponseHandler.success(res, 'Country restricted', []);
+                    }
                 }
 
-                // 2. If specific universities are set, restrict to those
+                // 2. Filter by specific universities if assigned
                 if (allowedUnivs.length > 0) {
                     universities = universities.filter(u =>
                         allowedUnivs.includes(u.id?.toString()) ||
                         allowedUnivs.includes(u.university_id?.toString()) ||
                         allowedUnivs.includes(u.name)
                     );
+                } else if (allowedCountries.length === 0) {
+                    // No countries AND no universities assigned -> No access
+                    universities = [];
                 }
             }
 

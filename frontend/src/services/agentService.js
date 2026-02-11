@@ -31,6 +31,12 @@ export const agentService = {
     return response.data;
   },
 
+  // Get dashboard statistics
+  getDashboardStats: async () => {
+    const response = await apiClient.get('/agents/dashboard/stats');
+    return response.data;
+  },
+
   // Delete agent
   deleteAgent: async (id) => {
     const response = await apiClient.delete(`/agents/${id}`);

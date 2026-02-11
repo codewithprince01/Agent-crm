@@ -22,6 +22,13 @@ const validateRequest = (req, res, next) => {
 router.get('/', authMiddleware, roleMiddleware(roles.ALL_ADMINS), AgentController.getAllAgents);
 
 /**
+ * @route   GET /api/agents/dashboard/stats
+ * @desc    Get dashboard statistics for the logged-in agent
+ * @access  Private (Agent)
+ */
+router.get('/dashboard/stats', authMiddleware, roleMiddleware(['AGENT']), AgentController.getDashboardStats);
+
+/**
  * @route   GET /api/agents/pending
  * @desc    Get pending agents
  * @access  Private (Admin, Super Admin)

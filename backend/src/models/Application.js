@@ -20,67 +20,107 @@ const statusHistorySchema = new mongoose.Schema({
 }, { _id: true });
 
 const applicationSchema = new mongoose.Schema({
+  // Unique identification
+  applicationNo: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
+  },
+
   // References
   studentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student',
-    required: true
+    required: true,
+    index: true
   },
-  agentId: {
+  recruitmentAgentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Agent',
-    required: true
+    required: true,
+    index: true
   },
-  universityId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'University',
-    required: true
-  },
-  courseId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+
+  // Snapshots
+  studentName: {
+    type: String,
     required: true
   },
 
-  // Denormalized fields for performance
-  studentName: String,
-  studentEmail: String,
-  agentName: String,
-  universityName: String,
-  courseName: String,
+  // Program Details
+  programId: {
+    type: String, // External ID
+    required: true
+  },
+  programSnapshot: {
+    programName: String,
+    universityName: String,
+    countryName: String,
+    level: String,
+    duration: String,
+    category: String,
+    specialization: String
+  },
 
-  // Status
-  applicationStatus: {
+  // Status & Workflow
+  stage: {
     type: String,
     enum: [
-      'submitted',
-      'documents_verified',
-      'university_applied',
-      'offer_received',
-      'accepted',
-      'visa_applied',
-      'enrolled',
-      'commission_eligible',
-      'paid',
-      'rejected'
+      'Pre-Payment',
+      'Pre-Submission',
+      'Submission',
+      'Post-Submission',
+      'Admission',
+      'Visa-Application',
+      'Pre-Arrival',
+      'Post-Arrival',
+      'Arrival'
     ],
-    default: 'submitted'
+    default: 'Pre-Payment'
   },
-  source: String,
-  notes: String,
 
-  // Embedded status history
+  // Payment Details
+  paymentStatus: {
+    type: String,
+    enum: ['paid', 'unpaid', 'cancelled'],
+    default: 'unpaid'
+  },
+  paymentDate: Date,
+  applyDate: {
+    type: Date,
+    default: Date.now
+  },
+
+  // Transmission
+  isSent: {
+    type: Boolean,
+    default: false
+  },
+
+  // Role-Based Locking
+  lockedForAgent: {
+    type: Boolean,
+    default: false
+  },
+  submittedByAgent: {
+    type: Boolean,
+    default: false
+  },
+  submittedAt: Date,
+
+  // Metadata
+  notes: String,
   statusHistory: [statusHistorySchema]
 }, {
   timestamps: true
 });
 
 // Indexes
-applicationSchema.index({ studentId: 1 });
-applicationSchema.index({ agentId: 1 });
-applicationSchema.index({ universityId: 1 });
-applicationSchema.index({ courseId: 1 });
-applicationSchema.index({ applicationStatus: 1 });
-applicationSchema.index({ createdAt: -1 });
+applicationSchema.index({ applicationNo: 1 }, { unique: true });
+applicationSchema.index({ studentId: 1, programId: 1 }, { unique: true });
+applicationSchema.index({ stage: 1 });
+applicationSchema.index({ paymentStatus: 1 });
+applicationSchema.index({ recruitmentAgentId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Application', applicationSchema);

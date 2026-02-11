@@ -4,6 +4,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const AuditService = require('../services/auditService');
 
 class StudentController {
   /**
@@ -49,23 +50,42 @@ class StudentController {
       const { page = 1, limit = 100, search, startDate, endDate, role, gender } = req.query;
       const skip = (page - 1) * limit;
 
-      // Build query - only show completed registrations
-      const query = { isCompleted: true };
+      // Build query
+      const query = {};
 
-      // ROLE BASED FILTERING: Agents only see their own referrals
+      // ROLE BASED FILTERING: 
+      // Agents see ALL their own students (completed or not)
+      // Admins see all COMPLETED students by default
       if (req.userRole === 'AGENT') {
-        query.referredBy = req.userId;
+        const agentIdString = req.userId.toString();
+        query.$or = [
+          { agentId: new mongoose.Types.ObjectId(agentIdString) },
+          { referredBy: agentIdString }
+        ];
+      } else {
+        query.isCompleted = true;
       }
 
-      // Add search functionality
+      // Add search functionality (ensuring it doesn't overwrite agent filter)
       if (search) {
-        query.$or = [
-          { firstName: { $regex: search, $options: 'i' } },
-          { lastName: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } },
-          { studentId: { $regex: search, $options: 'i' } }
-        ];
+        const searchFilter = {
+          $or: [
+            { firstName: { $regex: search, $options: 'i' } },
+            { lastName: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+            { phone: { $regex: search, $options: 'i' } },
+            { studentId: { $regex: search, $options: 'i' } }
+          ]
+        };
+
+        if (query.$or) {
+          // If we already have an $or (from agent filter), we must use $and
+          const agentFilter = { $or: query.$or };
+          delete query.$or;
+          query.$and = [agentFilter, searchFilter];
+        } else {
+          query.$or = searchFilter.$or;
+        }
       }
 
       // Date range filter
@@ -287,6 +307,9 @@ class StudentController {
       delete studentData.password;
       delete studentData.__v;
 
+      // Log audit
+      await AuditService.logUpdate(req.user, 'Student', student._id, {}, updateData, req);
+
       return res.status(200).json({
         success: true,
         message: 'Profile updated successfully',
@@ -321,15 +344,27 @@ class StudentController {
         });
       }
 
-      // Authorization check: Agents can only delete students they referred
-      if (req.userRole === 'AGENT' && student.referredBy?.toString() !== req.userId.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Unauthorized: You can only delete students you referred'
-        });
+      // Authorization check (Agents only delete their own students)
+      if (req.userRole === 'AGENT') {
+        const agentIdString = req.userId.toString();
+        const isOwner = student.referredBy?.toString() === agentIdString ||
+          student.agentId?.toString() === agentIdString;
+
+        if (!isOwner) {
+          return res.status(403).json({
+            success: false,
+            message: 'Unauthorized: You can only delete students you referred'
+          });
+        }
       }
 
       await Student.findByIdAndDelete(id);
+
+      // Log audit
+      await AuditService.logDelete(req.user, 'Student', id, {
+        studentName: `${student.firstName} ${student.lastName}`,
+        email: student.email
+      }, req);
 
       return res.status(200).json({
         success: true,
@@ -413,6 +448,7 @@ class StudentController {
         country,
         postalCode,
         referredBy: req.userRole === 'AGENT' ? req.userId : (referredBy || null),
+        agentId: req.userRole === 'AGENT' ? req.userId : (referredBy || null), // Set both for consistency
         isCompleted: true, // Manual creation is always completed
         isDraft: false,
         isEmailVerified: true, // Admin created students don't need email verification
@@ -420,6 +456,13 @@ class StudentController {
       });
 
       await student.save();
+
+      // Log audit
+      await AuditService.logCreate(req.user, 'Student', student._id, {
+        studentName: `${student.firstName} ${student.lastName}`,
+        email: student.email,
+        studentId: student.studentId
+      }, req);
 
       // Send welcome email with setup link
       const emailService = require('../services/emailService');
@@ -465,12 +508,18 @@ class StudentController {
         });
       }
 
-      // Authorization check: Agents can only update students they referred
-      if (req.userRole === 'AGENT' && student.referredBy?.toString() !== req.userId.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Unauthorized: You can only update students you referred'
-        });
+      // Authorization check: Agents can only update students they referred or are assigned to
+      if (req.userRole === 'AGENT') {
+        const agentIdString = req.userId.toString();
+        const isOwner = student.referredBy?.toString() === agentIdString ||
+          student.agentId?.toString() === agentIdString;
+
+        if (!isOwner) {
+          return res.status(403).json({
+            success: false,
+            message: 'Unauthorized: You can only update students you referred'
+          });
+        }
       }
 
       const updatedStudent = await Student.findByIdAndUpdate(
@@ -478,6 +527,9 @@ class StudentController {
         { $set: updateData },
         { new: true, runValidators: true }
       ).select('-password -__v');
+
+      // Log audit
+      await AuditService.logUpdate(req.user, 'Student', id, {}, updateData, req);
 
       console.log('Student updated:', id);
 
@@ -521,6 +573,20 @@ class StudentController {
         });
       }
 
+      // Authorization check: Agents can only upload for their own students
+      if (req.userRole === 'AGENT') {
+        const agentIdString = req.userId.toString();
+        const isOwner = student.referredBy?.toString() === agentIdString ||
+          student.agentId?.toString() === agentIdString;
+
+        if (!isOwner) {
+          return res.status(403).json({
+            success: false,
+            message: 'Unauthorized: You can only upload documents for students you referred'
+          });
+        }
+      }
+
       // Add document to student's documents array
       const documentUrl = `/uploads/documents/${file.filename}`;
       student.documents.push({
@@ -531,6 +597,18 @@ class StudentController {
       });
 
       await student.save();
+
+      // Log audit
+      await AuditService.log({
+        action: 'UPDATE', // Or CREATE for doc? Let's use UPDATE as it's an array push
+        entityType: 'Student',
+        entityId: id,
+        description: `Document uploaded: ${document_type}`,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        ...(req.userRole === 'AGENT' ? { agentId: req.userId, agentName: req.user.name } : { userId: req.userId, userName: req.user.name }),
+        userRole: req.userRole
+      });
 
       console.log('Document uploaded for student:', id);
 

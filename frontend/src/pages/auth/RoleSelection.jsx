@@ -1,9 +1,13 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { ShieldAlert, UserCog, UserCheck, GraduationCap, ArrowRight, Users } from 'lucide-react';
+import { ShieldAlert, UserCog, UserCheck, GraduationCap, ArrowRight, Users, FlaskConical, MousePointer2 } from 'lucide-react';
 import { ROLES } from '../../utils/constants';
 import { selectSettings } from '../../store/slices/settingsSlice';
+import { useDispatch } from 'react-redux';
+import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
+import authService from '../../services/authService';
+import { useToast } from '../../components/ui/toast';
 
 const RoleCard = ({ role, title, description, icon: Icon, color, onClick }) => (
     <button
@@ -48,7 +52,9 @@ const RoleCard = ({ role, title, description, icon: Icon, color, onClick }) => (
 
 const RoleSelection = () => {
     const navigate = useNavigate();
-    const { isAuthenticated } = useSelector((state) => state.auth);
+    const dispatch = useDispatch();
+    const toast = useToast();
+    const { isAuthenticated, loading } = useSelector((state) => state.auth);
     const settings = useSelector(selectSettings);
 
     useEffect(() => {
@@ -91,6 +97,57 @@ const RoleSelection = () => {
             color: '#d97706', // Amber 600
         },
     ];
+
+    const devAccounts = [
+        {
+            role: ROLES.SUPER_ADMIN,
+            email: 'superadmin@gmail.com',
+            password: '12345678',
+            label: 'Super Admin',
+            color: '#4f46e5'
+        },
+        {
+            role: ROLES.ADMIN,
+            email: 'ritiksainiritiksaini6@gmail.com',
+            password: '12345678',
+            label: 'Admin',
+            color: '#2563eb'
+        },
+        {
+            role: ROLES.AGENT,
+            email: 'contact.ritiksaini@gmail.com',
+            password: '215488084@Temp',
+            label: 'Agent',
+            color: '#059669'
+        },
+        {
+            role: ROLES.STUDENT,
+            email: 'saini001ritik6@gmail.com',
+            password: '215488084@Temp',
+            label: 'Student',
+            color: '#d97706'
+        }
+    ];
+
+    const handleDirectLogin = async (account) => {
+        if (loading) return;
+
+        dispatch(loginStart());
+        try {
+            const response = await authService.login({
+                email: account.email,
+                password: account.password,
+                role: account.role
+            });
+            dispatch(loginSuccess(response));
+            toast.success(`Logged in as ${account.label}`);
+            navigate('/dashboard');
+        } catch (err) {
+            console.error("Direct login error:", err);
+            dispatch(loginFailure(err.response?.data?.message || "Login failed"));
+            toast.error(err.response?.data?.message || "Development login failed. Check server.");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-slate-50 relative overflow-hidden">
@@ -148,6 +205,48 @@ const RoleSelection = () => {
                                 Become a Partner
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Development Quick Login Section */}
+                <div className="mt-20 w-full max-w-5xl">
+                    <div className="flex items-center gap-3 mb-8 px-4">
+                        <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                            <FlaskConical size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-gray-900 tracking-tight">Development Access</h2>
+                            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mt-0.5">Quick Login for Testing Phase</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4">
+                        {devAccounts.map((account) => (
+                            <button
+                                key={account.role}
+                                onClick={() => handleDirectLogin(account)}
+                                disabled={loading}
+                                className="group relative bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-xl hover:border-primary-100 transition-all duration-300 text-left flex flex-col justify-between overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MousePointer2 size={16} className="text-primary-500" />
+                                </div>
+                                <div
+                                    className="w-2 h-8 rounded-full mb-4"
+                                    style={{ backgroundColor: account.color }}
+                                />
+                                <div>
+                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">{account.label}</p>
+                                    <p className="text-sm font-bold text-gray-900 group-hover:text-primary-600 transition-colors truncate w-full" title={account.email}>
+                                        {account.email}
+                                    </p>
+                                    <p className="text-[10px] text-gray-400 font-mono mt-1">Pass: {account.password}</p>
+                                </div>
+                                <div className="mt-4 flex items-center gap-2 text-[10px] font-black text-primary-600 uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
+                                    Click to Login <ArrowRight size={10} />
+                                </div>
+                            </button>
+                        ))}
                     </div>
                 </div>
 

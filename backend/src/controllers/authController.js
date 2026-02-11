@@ -217,6 +217,13 @@ class AuthController {
       // Send registration email
       await emailService.sendAgentRegistrationEmail(agent);
 
+      // Log audit
+      await AuditService.logCreate(null, 'Agent', agent._id, {
+        agentName: agent.name,
+        email: agent.email,
+        description: 'Self-registration'
+      }, req);
+
       logger.info('Agent registered', { agentId: agent.id, email: agent.email });
 
       return ResponseHandler.created(
@@ -277,6 +284,13 @@ class AuthController {
       // Send welcome email with setup link
       await emailService.sendStudentWelcomeEmail(student, setupToken);
 
+      // Log audit
+      await AuditService.logCreate(null, 'Student', student._id, {
+        studentName: `${student.firstName} ${student.lastName}`,
+        email: student.email,
+        description: 'Self-registration'
+      }, req);
+
       logger.info('Student registered via public URL', { studentId: student._id, email: student.email });
 
       return ResponseHandler.created(res, 'Registration successful. Please check your email to set your password.', {
@@ -325,6 +339,9 @@ class AuthController {
       student.lastLogin = new Date();
       await student.save();
 
+      // Log audit
+      await AuditService.logLogin(student, req, 'Student');
+
       return ResponseHandler.success(res, 'Login successful', {
         token,
         user: {
@@ -364,6 +381,19 @@ class AuthController {
       student.passwordSetupExpires = undefined;
 
       await student.save();
+
+      // Log audit
+      await AuditService.log({
+        action: 'UPDATE',
+        entityType: 'Student',
+        entityId: student._id,
+        description: 'Password setup completed',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        studentId: student._id,
+        userName: `${student.firstName} ${student.lastName}`,
+        userRole: 'STUDENT'
+      });
 
       logger.info('Student password setup complete', { studentId: student._id });
 
@@ -465,6 +495,19 @@ class AuthController {
 
       await student.save();
 
+      // Log audit
+      await AuditService.log({
+        action: 'UPDATE',
+        entityType: 'Student',
+        entityId: student._id,
+        description: 'Password reset successful',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        studentId: student._id,
+        userName: `${student.firstName} ${student.lastName}`,
+        userRole: 'STUDENT'
+      });
+
       await emailService.sendStudentPasswordResetSuccess(student);
 
       return ResponseHandler.success(res, 'Password reset successful.');
@@ -500,7 +543,8 @@ class AuthController {
   static async logout(req, res) {
     try {
       // Log audit
-      await AuditService.logLogout(req.user, req);
+      const userType = req.userRole === 'AGENT' ? 'Agent' : (req.userRole === 'STUDENT' ? 'Student' : 'User');
+      await AuditService.logLogout(req.user, req, userType);
 
       logger.info('User logged out', { userId: req.userId });
 
@@ -558,6 +602,19 @@ class AuthController {
       agent.status = 'active';
 
       await agent.save();
+
+      // Log audit
+      await AuditService.log({
+        action: 'UPDATE',
+        entityType: 'Agent',
+        entityId: agent._id,
+        description: 'Password setup completed',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        agentId: agent._id,
+        agentName: agent.name,
+        userRole: 'AGENT'
+      });
 
       logger.info('Password setup completed', { agentId: agent._id, email: agent.email });
 

@@ -51,10 +51,58 @@ const PartnerApplicationForm = () => {
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSendingOtp, setIsSendingOtp] = useState(false);
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [otp, setOtp] = useState('');
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
+
     const totalSteps = 5;
 
     const handleInputChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSendOtp = async () => {
+        if (!formData.email) {
+            toast.error("Please enter an email address first.");
+            return;
+        }
+        setIsSendingOtp(true);
+        try {
+            const response = await apiClient.post('/inquiry/send-otp', { email: formData.email });
+            if (response.data?.success) {
+                toast.success("Verification code sent to your email.");
+                setOtpSent(true);
+            } else {
+                toast.error(response.data?.message || "Failed to send code.");
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to send verification code.");
+        } finally {
+            setIsSendingOtp(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!otp) {
+            toast.error("Please enter the verification code.");
+            return;
+        }
+        setIsVerifyingOtp(true);
+        try {
+            const response = await apiClient.post('/inquiry/verify-otp', { email: formData.email, otp });
+            if (response.data?.success) {
+                toast.success("Email verified successfully!");
+                setIsEmailVerified(true);
+            } else {
+                toast.error(response.data?.message || "Invalid code.");
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Verification failed.");
+        } finally {
+            setIsVerifyingOtp(false);
+        }
     };
 
     const handleArrayChange = (field, value, checked) => {
@@ -68,6 +116,10 @@ const PartnerApplicationForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!isEmailVerified) {
+            toast.error("Please verify your email before submitting.");
+            return;
+        }
         setIsSubmitting(true);
 
         const userAgent = window.navigator.userAgent;
@@ -103,9 +155,12 @@ const PartnerApplicationForm = () => {
             case 1:
                 return formData.firstName && formData.lastName && formData.email &&
                     formData.phone && formData.qualification && formData.designation &&
-                    formData.experience;
+                    formData.experience && isEmailVerified;
             case 2:
-                return formData.companyName && formData.companyType && formData.establishedYear &&
+                const currentYear = new Date().getFullYear();
+                const year = parseInt(formData.establishedYear);
+                const isYearValid = year && year <= currentYear && year >= 1900;
+                return formData.companyName && formData.companyType && isYearValid &&
                     formData.address && formData.city && formData.state && formData.pincode;
             case 3:
                 return formData.specialization.length > 0 && formData.servicesOffered.length > 0 &&
@@ -238,9 +293,39 @@ const PartnerApplicationForm = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-semibold text-gray-700">Email Address *</label>
-                                        <input type="email" required value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)}
-                                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-900 outline-none transition-all" placeholder="john@example.com" />
+                                        <div className="flex gap-2">
+                                            <input type="email" required disabled={isEmailVerified || otpSent} value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)}
+                                                className={`flex-1 px-4 py-3 bg-white border ${isEmailVerified ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-900 outline-none transition-all`} placeholder="john@example.com" />
+                                            {!isEmailVerified && !otpSent && (
+                                                <button type="button" onClick={handleSendOtp} disabled={isSendingOtp || !formData.email}
+                                                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 disabled:bg-gray-300 transition-colors">
+                                                    {isSendingOtp ? 'Sending...' : 'Verify'}
+                                                </button>
+                                            )}
+                                            {isEmailVerified && (
+                                                <div className="flex items-center text-emerald-600 text-sm font-bold">
+                                                    <CheckCircle2 size={16} className="mr-1" /> Verified
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
+                                    {otpSent && !isEmailVerified && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-semibold text-gray-700">Verification Code *</label>
+                                            <div className="flex gap-2">
+                                                <input type="text" maxLength="6" value={otp} onChange={(e) => setOtp(e.target.value)}
+                                                    className="flex-1 px-4 py-3 bg-white border border-emerald-400 rounded-lg focus:ring-2 focus:ring-emerald-500/20 text-gray-900 outline-none" placeholder="123456" />
+                                                <button type="button" onClick={handleVerifyOtp} disabled={isVerifyingOtp || otp.length < 6}
+                                                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 disabled:bg-gray-300">
+                                                    {isVerifyingOtp ? '...' : 'OK'}
+                                                </button>
+                                                <button type="button" onClick={() => { setOtpSent(false); setOtp(''); }}
+                                                    className="text-[10px] text-gray-500 hover:text-emerald-600 font-bold underline">
+                                                    Resend
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-semibold text-gray-700">Phone Number *</label>
                                         <input type="tel" required value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)}
@@ -321,8 +406,14 @@ const PartnerApplicationForm = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-semibold text-gray-700">Year Established *</label>
-                                        <input type="number" required min="1950" max="2024" value={formData.establishedYear} onChange={(e) => handleInputChange('establishedYear', e.target.value)}
-                                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-900 outline-none transition-all" placeholder="e.g. 2018" />
+                                        <input type="number" required value={formData.establishedYear} onChange={(e) => handleInputChange('establishedYear', e.target.value)}
+                                            className={`w-full px-4 py-3 bg-white border ${formData.establishedYear && (parseInt(formData.establishedYear) > new Date().getFullYear() || parseInt(formData.establishedYear) < 1900) ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-emerald-500'} rounded-lg focus:ring-2 focus:ring-emerald-500/20 text-gray-900 outline-none transition-all`} placeholder="e.g. 2018" />
+                                        {formData.establishedYear && parseInt(formData.establishedYear) > new Date().getFullYear() && (
+                                            <p className="text-[10px] text-red-500 font-bold">Cannot be in the future</p>
+                                        )}
+                                        {formData.establishedYear && parseInt(formData.establishedYear) < 1900 && (
+                                            <p className="text-[10px] text-red-500 font-bold">Enter a valid year</p>
+                                        )}
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-semibold text-gray-700">Company Website</label>

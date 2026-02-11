@@ -17,6 +17,7 @@ class AuditLogController {
         entityType,
         startDate,
         endDate,
+        searchTerm,
       } = req.query;
 
       const skip = (page - 1) * limit;
@@ -43,6 +44,15 @@ class AuditLogController {
           $gte: new Date(startDate),
           $lte: new Date(endDate),
         };
+      }
+
+      // Filter by search term (userName or agentName)
+      if (searchTerm) {
+        query.$or = [
+          { userName: { $regex: searchTerm, $options: 'i' } },
+          { agentName: { $regex: searchTerm, $options: 'i' } },
+          { description: { $regex: searchTerm, $options: 'i' } }
+        ];
       }
 
       const logs = await AuditLog.find(query)

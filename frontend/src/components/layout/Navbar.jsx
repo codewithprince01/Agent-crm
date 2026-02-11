@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FiMenu, FiBell, FiUser, FiLogOut, FiSettings } from "react-icons/fi";
 import { logout } from "../../store/slices/authSlice";
+import { authService } from "../../services/authService";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,9 +28,15 @@ const Navbar = ({ onMenuClick }) => {
     setShowDropdown(false);
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      dispatch(logout());
+      navigate("/");
+    }
   };
 
   return (
