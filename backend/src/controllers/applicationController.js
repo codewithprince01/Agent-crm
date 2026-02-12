@@ -38,7 +38,13 @@ class ApplicationController {
             as: 'apps'
           }
         },
-        { $match: { apps: { $size: 0 } } },
+        {
+          $addFields: {
+            isApplied: { $gt: [{ $size: '$apps' }, 0] }
+          }
+        },
+        // Only show students who haven't applied yet
+        { $match: { isApplied: false } },
         { $project: { password: 0, apps: 0 } }
       ]);
 
@@ -57,9 +63,14 @@ class ApplicationController {
     try {
       const matchQuery = {};
 
-      // If Agent, only show their students
+      // If Agent, only show their students (created directly OR referred)
       if (req.userRole === 'AGENT') {
-        matchQuery.agentId = new mongoose.Types.ObjectId(req.userId);
+        const agentIdString = req.userId.toString();
+        const agentId = new mongoose.Types.ObjectId(agentIdString);
+        matchQuery.$or = [
+          { agentId: agentId },
+          { referredBy: agentIdString }
+        ];
       }
 
       const students = await Student.aggregate([
@@ -102,8 +113,23 @@ class ApplicationController {
         return ResponseHandler.notFound(res, 'Student not found');
       }
 
-      if (req.userRole === 'AGENT' && student.agentId?.toString() !== req.userId.toString()) {
-        return ResponseHandler.forbidden(res, 'You can only apply for your own students');
+      // Debug logging
+      console.log('🔍 Ownership Check Debug:');
+      console.log('  req.userRole:', req.userRole);
+      console.log('  req.userId:', req.userId);
+      console.log('  student.agentId:', student.agentId);
+      console.log('  student.referredBy:', student.referredBy);
+      console.log('  Match check (agentId):', student.agentId?.toString() === req.userId.toString());
+      console.log('  Match check (referredBy):', student.referredBy?.toString() === req.userId.toString());
+
+      // Check if agent owns this student (either created directly OR referred)
+      if (req.userRole === 'AGENT') {
+        const isOwner = student.agentId?.toString() === req.userId.toString();
+        const isReferrer = student.referredBy?.toString() === req.userId.toString();
+
+        if (!isOwner && !isReferrer) {
+          return ResponseHandler.forbidden(res, 'You can only apply for your own students');
+        }
       }
 
       // 3. Duplicate Check (Student + Program)
@@ -165,6 +191,8 @@ class ApplicationController {
       // Role-based filtering
       if (req.userRole === 'AGENT') {
         query.recruitmentAgentId = req.userId;
+      } else if (req.userRole === 'STUDENT') {
+        query.studentId = req.userId;
       }
 
       const totalItems = await Application.countDocuments(query);

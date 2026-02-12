@@ -43,10 +43,8 @@ class DashboardController {
       const recentApplications = await Application.find()
         .limit(10)
         .sort({ createdAt: -1 })
-        .populate('student')
-        .populate('agent')
-        .populate('university')
-        .populate('course');
+        .populate('studentId', 'personalInfo.firstName personalInfo.lastName personalInfo.email')
+        .populate('recruitmentAgentId', 'personalInfo.firstName personalInfo.lastName personalInfo.email agentId');
 
       // Pending agent approvals
       const pendingAgents = await Agent.countDocuments({ approvalStatus: 'pending' });
@@ -164,9 +162,7 @@ class DashboardController {
       // My applications
       const applications = await Application.find({ studentId })
         .sort({ createdAt: -1 })
-        .populate('university')
-        .populate('course')
-        .populate('agent');
+        .populate('recruitmentAgentId', 'personalInfo.firstName personalInfo.lastName personalInfo.email agentId');
 
       // Applications by status
       const applicationsByStatus = applications.reduce((acc, app) => {

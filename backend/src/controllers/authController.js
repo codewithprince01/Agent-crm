@@ -67,7 +67,7 @@ class AuthController {
 
       logger.info('User logged in', { userId: user.id, email: user.email, role: user.role });
 
-      return ResponseHandler.success(res, 'Login successful', {
+      return ResponseHandler.success(res, 'Welcome back! You have successfully logged in.', {
         token,
         user: {
           id: user._id,
@@ -142,16 +142,16 @@ class AuthController {
 
       logger.info('Agent logged in', { agentId: agent.id, email: agent.email });
 
-      return ResponseHandler.success(res, 'Login successful', {
+      return ResponseHandler.success(res, 'Welcome! You have successfully logged in as an agent.', {
         token,
         user: {
-          id: agent.id,
-          name: agent.name,
+          id: agent._id,
+          name: `${agent.firstName} ${agent.lastName}`, // Construct full name
           email: agent.email,
           role: 'AGENT',
           phone: agent.phone,
           status: agent.status,
-          company_name: agent.company_name,
+          companyName: agent.companyName,
           approvalStatus: agent.approvalStatus,
         },
       });
@@ -342,7 +342,7 @@ class AuthController {
       // Log audit
       await AuditService.logLogin(student, req, 'Student');
 
-      return ResponseHandler.success(res, 'Login successful', {
+      return ResponseHandler.success(res, 'Welcome back! You have successfully logged in.', {
         token,
         user: {
           id: student._id,
@@ -548,7 +548,7 @@ class AuthController {
 
       logger.info('User logged out', { userId: req.userId });
 
-      return ResponseHandler.success(res, 'Logout successful');
+      return ResponseHandler.success(res, 'You have been successfully logged out. See you soon!');
     } catch (error) {
       logger.error('Logout error', { error: error.message });
       return ResponseHandler.serverError(res, 'Logout failed', error);

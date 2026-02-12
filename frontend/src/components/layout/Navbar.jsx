@@ -40,7 +40,7 @@ const Navbar = ({ onMenuClick }) => {
   };
 
   return (
-    <nav className="h-16 bg-white border-b border-gray-200 fixed top-0 right-0 left-0 md:left-72 z-10 transition-all duration-300">
+    <nav className="h-16 bg-white border-b border-gray-200 fixed top-0 right-0 left-0 md:left-72 z-50 transition-all duration-300">
       <div className="h-full px-4 flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center">
@@ -92,12 +92,12 @@ const Navbar = ({ onMenuClick }) => {
             >
               <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center text-white">
                 <span className="text-sm font-bold">
-                  {user?.name?.charAt(0).toUpperCase()}
+                  {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || user?.role?.charAt(0) || 'U'}
                 </span>
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-sm font-medium text-gray-900">
-                  {user?.name}
+                  {user?.name || user?.email || 'User'}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
                   {user?.role?.replace("_", " ")}
@@ -106,7 +106,7 @@ const Navbar = ({ onMenuClick }) => {
             </button>
 
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[100]">
                 <button
                   onClick={() => {
                     navigate("/profile");

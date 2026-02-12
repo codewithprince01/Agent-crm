@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Plus, Copy, Check } from 'lucide-react';
+import { Search, X, Plus, Copy, Check, PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -371,6 +371,7 @@ const StudentList = () => {
                                     {(user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN) && (
                                         <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Referred By</th>
                                     )}
+                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider text-center">Applied</th>
                                     <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Registered On</th>
                                     <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -421,6 +422,39 @@ const StudentList = () => {
                                             </td>
                                         )}
                                         <td className="p-4">
+                                            <div className="flex items-center justify-center">
+                                                {student.isApplied ? (
+                                                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all min-w-[180px]">
+                                                        <span className="text-gray-700 text-sm font-semibold">
+                                                            Total Applied: {student.applicationCount || 0}
+                                                        </span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                navigate(`/pending-applications?studentId=${student._id}`);
+                                                            }}
+                                                            className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
+                                                            title="Add Another Application"
+                                                        >
+                                                            <PlusCircle size={16} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/pending-applications?studentId=${student._id}`);
+                                                        }}
+                                                        className="px-4 py-2.5 bg-white text-indigo-600 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all flex items-center gap-2 text-sm font-semibold"
+                                                        title="Apply for Program"
+                                                    >
+                                                        <PlusCircle size={16} />
+                                                        Apply Now
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 whitespace-nowrap">
                                             <span className="text-gray-600">
                                                 {student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'N/A'}
                                             </span>

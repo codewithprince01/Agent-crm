@@ -7,7 +7,7 @@ const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="h-screen bg-gray-50 overflow-x-hidden overflow-y-auto">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 

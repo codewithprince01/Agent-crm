@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const studentDraftController = require('../controllers/studentDraftController');
-const { validateReferral, verifyReferralCookie } = require('../middleware/referralValidation');
+const { validateReferral, verifyReferralCookie } = require('../middlewares/referralValidation');
 
 /**
  * Draft Routes

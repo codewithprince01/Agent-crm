@@ -26,6 +26,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import AgentDashboard from "./pages/dashboard/AgentDashboard";
 import StudentDashboard from "./pages/dashboard/StudentDashboard";
+import StudentApplications from "./pages/dashboard/StudentApplications"; // New import
 import RoleBasedProfile from "./pages/RoleBasedProfile";
 import ChangePassword from "./pages/auth/ChangePassword";
 
@@ -577,6 +578,15 @@ function AppContent() {
           element={
             <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        {/* Student Specific Routes */}
+        <Route
+          path="my-applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <StudentApplications />
             </ProtectedRoute>
           }
         />

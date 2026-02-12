@@ -74,7 +74,7 @@ const settingsRoutes = require('./src/routes/settingsRoutes');
 const inquiryRoutes = require('./src/routes/inquiryRoutes');
 const studentDraftRoutes = require('./src/routes/studentDraftRoutes');
 const otpRoutes = require('./src/routes/otpRoutes');
-const { validateReferral } = require('./src/middleware/referralValidation');
+const { validateReferral } = require('./src/middlewares/referralValidation');
 
 // Public referral validation endpoint (no auth required)
 app.get('/api/validate-referral', validateReferral, (req, res) => {

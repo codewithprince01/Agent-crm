@@ -124,8 +124,7 @@ const ProgramSelectionFlow = () => {
                         );
                         const specs = res.data || [];
                         currentData.specializations = specs;
-                        if (specs.length <= 1) {
-                            if (specs.length === 1) currentSelections.specialization = specs[0];
+                        if (specs.length === 0) {
                             return await autoSkip(6);
                         }
                     } else if (s === 6) {
@@ -246,12 +245,8 @@ const ProgramSelectionFlow = () => {
                     const specs = res.data || [];
                     currentData.specializations = specs;
 
-                    // Skip if: 
-                    // 1. No specializations found
-                    // 2. Only one specialization found
-                    // 3. The only specialization is identical to the category
-                    if (specs.length <= 1) {
-                        if (specs.length === 1) currentSelections.specialization = specs[0];
+                    if (specs.length === 0) {
+                        // No specializations, jump straight to programs
                         return await processStep(6);
                     }
                 } else if (nextStep === 6) {
@@ -586,322 +581,250 @@ const ProgramSelectionFlow = () => {
                                     )}
                                 </div>
                             ) : (
-                                /* STEP 6: VERTICAL STACK WITH HORIZONTAL CONTEXT HEADER */
-                                <div className="max-w-[1400px] mx-auto text-left flex flex-col gap-10">
+                                /* STEP 6: SIMPLIFIED PROFESSIONAL LAYOUT */
+                                <div className="max-w-[1400px] mx-auto">
 
-                                    {/* HORIZONTAL HEADER: STUDENT & SELECTION CONTEXT */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                        {/* Student Info Card */}
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className="bg-white p-10 rounded-[50px] shadow-2xl border border-gray-50 relative overflow-hidden"
-                                        >
-                                            <div className="absolute top-0 right-0 p-8 opacity-[0.03] rotate-12">
-                                                <GraduationCap size={150} />
-                                            </div>
 
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary-500 mb-8">Applicant Profile</h3>
-
-                                            <div className="flex items-center gap-6 mb-10">
-                                                <div className="h-20 w-20 bg-indigo-600 rounded-[30px] flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-indigo-100">
-                                                    {student?.firstName?.[0]}
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-2xl font-black text-indigo-950 leading-tight">{student?.firstName} {student?.lastName}</h4>
-                                                    <p className="text-gray-400 font-bold mt-1 uppercase tracking-widest text-[9px]">ID: {studentId.slice(-8).toUpperCase()}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-8">
-                                                <div>
-                                                    <p style={{ color: 'black' }} className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">Nationality</p>
-                                                    <p className="text-sm font-bold text-gray-700">{student?.nationality || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <p style={{ color: 'black' }} className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">Phone</p>
-                                                    <p className="text-sm font-bold text-gray-700">{student?.countryCode} {student?.phone || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <p style={{ color: 'black' }} className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">Passport</p>
-                                                    <p className="text-sm font-bold text-gray-700">{student?.passportNumber || 'N/A'}</p>
-                                                </div>
-                                                <div>
-                                                    <p style={{ color: 'black' }} className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">Residential Address</p>
-                                                    <p className="text-sm font-bold text-gray-700 leading-tight truncate">
-                                                        {[student?.city, student?.state].filter(Boolean).join(', ') || 'N/A'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-
-                                        {/* Selections Summary Card */}
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.1 }}
-                                            className="bg-indigo-950 p-10 rounded-[50px] shadow-2xl text-white relative overflow-hidden"
-                                        >
-                                            <div className="absolute bottom-0 right-0 p-8 opacity-10 -rotate-12">
-                                                <Filter size={120} />
-                                            </div>
-
-                                            <h3 style={{ color: 'white' }} className="text-[10px] font-black uppercase tracking-[0.4em] mb-8">Selection Matrix</h3>
-
-                                            <div className="grid grid-cols-2 gap-y-6 gap-x-12">
-                                                <div>
-                                                    <p className="text-[10px] uppercase font-black tracking-widest text-indigo-400 mb-1">Country</p>
-                                                    <p className="text-sm font-bold">{selections.country?.name}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] uppercase font-black tracking-widest text-indigo-400 mb-1">Level</p>
-                                                    <p className="text-sm font-bold uppercase">{selections.level}</p>
-                                                </div>
-                                                <div className="col-span-full">
-                                                    <p className="text-[10px] uppercase font-black tracking-widest text-indigo-400 mb-1">University</p>
-                                                    <p className="text-sm font-bold">{selections.university?.name}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] uppercase font-black tracking-widest text-indigo-400 mb-1">Category</p>
-                                                    <p className="text-sm font-bold">{selections.category?.name || selections.category?.category_name}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] uppercase font-black tracking-widest text-indigo-400 mb-1">Specialization</p>
-                                                    <p className="text-sm font-bold truncate">{selections.specialization?.name || selections.specialization?.specialization_name || 'General'}</p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    </div>
-
-                                    {/* PROMINENT ACTION SECTION (If program selected) */}
-                                    {previewProgram && (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="px-4"
-                                        >
-                                            <button
-                                                onClick={() => handleApply(previewProgram)}
-                                                className="w-full py-12 bg-primary-600 text-white rounded-[50px] font-black text-2xl uppercase tracking-[0.4em] shadow-[0_30px_100px_rgba(37,99,235,0.4)] hover:bg-primary-700 hover:-translate-y-2 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-4 group premium-apply-glow border-4 border-white/20"
+                                    {/* Main Content Area */}
+                                    <AnimatePresence mode="wait">
+                                        {previewProgram ? (
+                                            /* Program Review Details */
+                                            <motion.div
+                                                key="review"
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -20 }}
+                                                className="space-y-6"
                                             >
-                                                <div className="flex items-center gap-6">
-                                                    CONFIRM & APPLY FOR THIS COURSE
-                                                    <CheckCircle size={40} className="group-hover:scale-125 transition-transform" />
-                                                </div>
-                                                <span className="text-[10px] opacity-70 tracking-[0.5em] font-medium">Finalize Registration Registry for {student?.firstName}</span>
-                                            </button>
-                                        </motion.div>
-                                    )}
+                                                {/* Student Info & Selection Summary - Side by Side */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    {/* Student Information Card */}
+                                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4">Student Information</h3>
 
-                                    {/* MAIN CONTENT AREA: LIST OR REVIEW */}
-                                    <div className="w-full">
-                                        <AnimatePresence mode="wait">
-                                            {previewProgram ? (
-                                                /* PHASE 2: FINAL COURSE REVIEW DETAILS */
-                                                <motion.div
-                                                    key="review"
-                                                    initial={{ opacity: 0, y: 30 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: -30 }}
-                                                    className="space-y-8"
-                                                >
-                                                    <div className="bg-white p-16 rounded-[60px] shadow-3xl border border-gray-100 relative overflow-hidden">
-                                                        <div className="absolute top-0 right-0 p-16 bg-primary-50 rounded-bl-[200px] -z-10"></div>
-
-                                                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
+                                                        <div className="flex items-center gap-4 mb-6">
+                                                            <div className="h-14 w-14 bg-indigo-600 rounded-lg flex items-center justify-center text-xl font-bold text-white">
+                                                                {student?.firstName?.[0]}
+                                                            </div>
                                                             <div>
-                                                                <h3 className="text-xs font-black uppercase tracking-[0.4em] text-primary-500 mb-2">Program Registry Analysis</h3>
-                                                                <div className="h-1.5 w-20 bg-primary-500 rounded-full"></div>
+                                                                <h4 className="text-lg font-bold text-gray-900">{student?.firstName} {student?.lastName}</h4>
+                                                                <p className="text-xs text-gray-500">ID: {studentId.slice(-8).toUpperCase()}</p>
                                                             </div>
-                                                            <button
-                                                                onClick={() => setPreviewProgram(null)}
-                                                                className="px-8 py-3 bg-gray-50 text-xs font-black text-gray-400 hover:text-primary-600 hover:bg-white border hover:border-primary-200 rounded-2xl uppercase tracking-widest transition-all shadow-sm"
-                                                            >
-                                                                Change Selection
-                                                            </button>
                                                         </div>
 
-                                                        <h3 className="text-4xl md:text-5xl font-black text-indigo-950 mb-16 leading-tight tracking-tight max-w-5xl">
-                                                            {previewProgram.course_name || previewProgram.name || previewProgram.program_name || 'Selected Course'}
-                                                        </h3>
-
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                                            {/* Duration */}
-                                                            <div className="p-10 bg-[#F8FAFC] rounded-[45px] border border-white shadow-xl shadow-black/[0.01]">
-                                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Duration</p>
-                                                                <div className="flex items-center gap-5">
-                                                                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary-500 shadow-sm"><Clock size={24} /></div>
-                                                                    <p className="text-xl font-black text-indigo-950">{previewProgram.duration || 'N/A'}</p>
-                                                                </div>
+                                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                                            <div>
+                                                                <p className="text-xs text-gray-500 mb-1">Nationality</p>
+                                                                <p className="font-semibold text-gray-900">{student?.nationality || 'N/A'}</p>
                                                             </div>
-
-                                                            {/* Study Mode */}
-                                                            <div className="p-10 bg-[#F8FAFC] rounded-[45px] border border-white shadow-xl shadow-black/[0.01]">
-                                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Study Mode</p>
-                                                                <div className="flex items-center gap-5">
-                                                                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-blue-500 shadow-sm"><BookOpen size={24} /></div>
-                                                                    <p className="text-xl font-black text-indigo-950 uppercase">{previewProgram.study_mode || 'By Research / Full-time'}</p>
-                                                                </div>
+                                                            <div>
+                                                                <p className="text-xs text-gray-500 mb-1">Phone</p>
+                                                                <p className="font-semibold text-gray-900">{student?.phone || 'N/A'}</p>
                                                             </div>
-
-                                                            {/* Tuition */}
-                                                            <div className="p-10 bg-[#F8FAFC] rounded-[45px] border border-white shadow-xl shadow-black/[0.01]">
-                                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Tuition Estimate</p>
-                                                                <div className="flex items-center gap-5">
-                                                                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-green-500 shadow-sm"><Layers size={24} /></div>
-                                                                    <p className="text-xl font-black text-indigo-950">{previewProgram.tuition_fee || 'Variable'}</p>
-                                                                </div>
+                                                            <div>
+                                                                <p className="text-xs text-gray-500 mb-1">Passport</p>
+                                                                <p className="font-semibold text-gray-900">{student?.passportNumber || 'N/A'}</p>
                                                             </div>
-
-                                                            {/* Intakes */}
-                                                            <div className="p-10 bg-[#F8FAFC] rounded-[45px] border border-white shadow-xl shadow-black/[0.01] lg:col-span-2">
-                                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Available Intakes</p>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {(previewProgram.intake?.split(',') || ['Flexible']).map((m, i) => (
-                                                                        <span key={i} className="px-5 py-2 bg-white border border-gray-100 rounded-xl text-[10px] font-black text-gray-600 uppercase tracking-widest">{m.trim()}</span>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="p-10 bg-indigo-950 rounded-[45px] text-white">
-                                                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-4">Academic Taxonomy</p>
-                                                                <div className="grid grid-cols-1 gap-6">
-                                                                    <div className="flex items-center gap-5">
-                                                                        <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center text-white"><Layers size={20} /></div>
-                                                                        <div>
-                                                                            <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Category</p>
-                                                                            <p className="text-sm font-black leading-tight">{previewProgram.course_category?.name || selections.category?.name || selections.category?.category_name}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-5">
-                                                                        <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center text-white"><BookOpen size={20} /></div>
-                                                                        <div>
-                                                                            <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Specialization</p>
-                                                                            <p className="text-sm font-black leading-tight">{previewProgram.course_specialization?.name || selections.specialization?.name || selections.specialization?.specialization_name || 'General'}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-5">
-                                                                        <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center text-white"><Building2 size={20} /></div>
-                                                                        <div>
-                                                                            <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Institution</p>
-                                                                            <p className="text-sm font-black leading-tight">{previewProgram.university?.name || selections.university.name}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                            <div>
+                                                                <p className="text-xs text-gray-500 mb-1">City</p>
+                                                                <p className="font-semibold text-gray-900">{student?.city || 'N/A'}</p>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </motion.div>
-                                            ) : filteredItems.length > 0 ? (
-                                                /* PHASE 1: PROGRAM LIST */
-                                                <motion.div
-                                                    key="list"
-                                                    initial={{ opacity: 0, y: 30 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: -30 }}
-                                                    className="grid grid-cols-1 gap-6"
-                                                >
-                                                    <div className="flex items-center justify-between mb-4 px-4">
-                                                        <h3 className="text-xs font-black uppercase tracking-[0.4em] text-gray-400">Identify Program Registry</h3>
-                                                        <span className="text-[10px] font-black text-primary-500 bg-primary-50 px-3 py-1 rounded-full">{filteredItems.length} Records Found</span>
-                                                    </div>
 
-                                                    {filteredItems.map((p, idx) => (
-                                                        <motion.div
-                                                            key={idx}
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            transition={{ delay: idx * 0.05 }}
-                                                            onClick={() => setPreviewProgram(p)}
-                                                            className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-xl hover:shadow-2xl hover:border-primary-200 hover:scale-[1.01] transition-all duration-500 cursor-pointer group flex flex-col sm:flex-row items-center gap-8 relative overflow-hidden"
+                                                    {/* Selection Summary Card */}
+                                                    <div className="bg-indigo-600 p-6 rounded-xl shadow-sm text-white">
+                                                        <p className="text-xl text-white font-bold uppercase tracking-wider text-indigo-100 mb-4">Selection Summary</p>
+
+                                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                                            <div>
+                                                                <p className="text-xs text-indigo-200 mb-1">Country</p>
+                                                                <p className="font-semibold">{selections.country?.name}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-indigo-200 mb-1">Level</p>
+                                                                <p className="font-semibold uppercase">{selections.level}</p>
+                                                            </div>
+                                                            <div className="col-span-2">
+                                                                <p className="text-xs text-indigo-200 mb-1">University</p>
+                                                                <p className="font-semibold">{selections.university?.name}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-indigo-200 mb-1">Category</p>
+                                                                <p className="font-semibold">{selections.category?.name || selections.category?.category_name}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-indigo-200 mb-1">Specialization</p>
+                                                                <p className="font-semibold truncate">{selections.specialization?.name || selections.specialization?.specialization_name || 'General'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Course Details Section */}
+                                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                                    {/* Header with Program Name */}
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                                        <div>
+                                                            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">Selected Program</span>
+                                                            <h3 className="text-2xl font-bold text-gray-900 mt-2">
+                                                                {previewProgram.course_name || previewProgram.name || previewProgram.program_name || 'Selected Course'}
+                                                            </h3>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setPreviewProgram(null)}
+                                                            className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-sm font-semibold transition-colors"
                                                         >
-                                                            <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
-                                                                <Sparkles size={24} />
-                                                            </div>
+                                                            Change Selection
+                                                        </button>
+                                                    </div>
 
-                                                            <div className="flex-1 text-center sm:text-left">
-                                                                <h4 className="text-xl font-black text-indigo-950 mb-3 group-hover:text-primary-600 transition-colors leading-snug">
-                                                                    {p.course_name || p.name || p.program_name || 'Untitled Course'}
-                                                                </h4>
-                                                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-8">
-                                                                    <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest gap-2">
-                                                                        <Clock size={12} className="text-primary-500" />
-                                                                        {p.duration || 'N/A'}
+                                                    {/* Program Details Grid */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {/* Duration */}
+                                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                            <p className="text-xs text-gray-500 mb-2">Duration</p>
+                                                            <div className="flex items-center gap-3">
+                                                                <Clock size={20} className="text-indigo-600" />
+                                                                <p className="text-lg font-bold text-gray-900">{previewProgram.duration?.trim() || 'N/A'}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Study Mode */}
+                                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                            <p className="text-xs text-gray-500 mb-2">Study Mode</p>
+                                                            <div className="flex items-center gap-3">
+                                                                <BookOpen size={20} className="text-indigo-600" />
+                                                                <p className="text-lg font-bold text-gray-900">{previewProgram.study_mode || 'Full-time'}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Tuition */}
+                                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                            <p className="text-xs text-gray-500 mb-2">Tuition Fee</p>
+                                                            <div className="flex items-center gap-3">
+                                                                <Layers size={20} className="text-indigo-600" />
+                                                                <p className="text-lg font-bold text-gray-900">{previewProgram.tuition_fee || 'Variable'}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Intakes */}
+                                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 lg:col-span-2">
+                                                            <p className="text-xs text-gray-500 mb-3">Available Intakes</p>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {(previewProgram.intake?.split(',') || ['Flexible']).map((m, i) => (
+                                                                    <span key={i} className="px-3 py-1 bg-white border border-gray-300 rounded-md text-xs font-semibold text-gray-700">{m.trim()}</span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Academic Info */}
+                                                        <div className="p-4 bg-indigo-600 rounded-lg text-white">
+                                                            <p className="text-xs text-white mb-3">Academic Details</p>
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    <Layers size={16} className="text-white" />
+                                                                    <div>
+                                                                        <p className="text-xs text-white">Category</p>
+                                                                        <p className="text-sm font-semibold">{previewProgram.course_category?.name || selections.category?.name || selections.category?.category_name}</p>
                                                                     </div>
-                                                                    <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest gap-2">
-                                                                        <Star size={12} className="text-orange-500" />
-                                                                        {p.intake || 'Flexible'}
+                                                                </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <BookOpen size={16} className="text-white" />
+                                                                    <div>
+                                                                        <p className="text-xs text-white">Specialization</p>
+                                                                        <p className="text-sm font-semibold">{previewProgram.course_specialization?.name || selections.specialization?.name || selections.specialization?.specialization_name || 'General'}</p>
                                                                     </div>
                                                                 </div>
                                                             </div>
-
-                                                            <div className="h-14 px-8 rounded-2xl bg-gray-50 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-indigo-950 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
-                                                                Analyze Setup
-                                                                <ArrowRight size={16} className="ml-3 group-hover:translate-x-1 transition-transform" />
-                                                            </div>
-                                                        </motion.div>
-                                                    ))}
-                                                </motion.div>
-                                            ) : (
-                                                /* PHASE 3: EMPTY RESULTS - Refined for compact space */
-                                                <motion.div
-                                                    key="empty"
-                                                    initial={{ opacity: 0, scale: 0.95 }}
-                                                    animate={{ opacity: 1, scale: 1 }}
-                                                    className="flex flex-col items-center justify-center text-center bg-white rounded-[50px] border-2 border-dashed border-gray-100 p-20 py-32 shadow-xl"
-                                                >
-                                                    <div className="h-24 w-24 bg-gray-50 rounded-[35px] flex items-center justify-center text-gray-200 mb-8 border border-gray-100 rotate-3 transition-transform hover:rotate-6">
-                                                        <Search size={40} />
-                                                    </div>
-                                                    <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">No Specific Programs Found</h3>
-                                                    <p className="text-gray-400 font-medium max-w-md mx-auto text-lg leading-relaxed mb-10">
-                                                        No specific programs are listed for <span className="text-indigo-950 font-bold">{selections.university?.name}</span> + <span className="text-indigo-950 font-bold">{selections.level}</span>
-                                                        {selections.specialization && <> + <span className="text-indigo-950 font-bold">{selections.specialization.name || selections.specialization.specialization_name}</span></>}.
-                                                    </p>
-
-                                                    {selections.specialization && (
-                                                        <div className="w-full max-w-lg space-y-4 mb-6">
-                                                            <div className="p-8 bg-primary-50 rounded-3xl border border-primary-100">
-                                                                <p className="text-sm font-bold text-primary-900 mb-2">💡 General Application Available</p>
-                                                                <p className="text-xs text-primary-700 leading-relaxed">
-                                                                    You can proceed with a general application for <span className="font-black">{selections.specialization.name || selections.specialization.specialization_name}</span> at this university.
-                                                                </p>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    const generalProgram = {
-                                                                        id: `general-${selections.university.id}-${selections.specialization.id}`,
-                                                                        course_name: `${selections.level} - ${selections.specialization.name || selections.specialization.specialization_name}`,
-                                                                        university_id: selections.university.id,
-                                                                        level: selections.level,
-                                                                        course_category_id: selections.category?.id,
-                                                                        specialization_id: selections.specialization?.id,
-                                                                        study_mode: 'To Be Determined',
-                                                                        duration: 'To Be Determined',
-                                                                        intake: 'Flexible',
-                                                                        university: selections.university,
-                                                                        course_category: selections.category,
-                                                                        course_specialization: selections.specialization,
-                                                                        isGeneralApplication: true
-                                                                    };
-                                                                    setPreviewProgram(generalProgram);
-                                                                }}
-                                                                className="w-full px-12 py-5 bg-primary-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-primary-700 transition-all shadow-2xl active:scale-95"
-                                                            >
-                                                                Proceed with General Application
-                                                            </button>
                                                         </div>
-                                                    )}
-                                                    <button
-                                                        onClick={() => setStep(step - 1)}
-                                                        className="px-12 py-5 bg-gray-100 text-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-200 transition-all shadow-lg active:scale-95"
+                                                    </div>
+                                                </div>
+
+                                                {/* Apply Button */}
+                                                <button
+                                                    onClick={() => handleApply(previewProgram)}
+                                                    className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-base hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-lg"
+                                                >
+                                                    <CheckCircle size={24} />
+                                                    Confirm & Submit Application
+                                                </button>
+                                            </motion.div>
+                                        ) : filteredItems.length > 0 ? (
+                                            /* PHASE 1: PROGRAM LIST */
+                                            <motion.div
+                                                key="list"
+                                                initial={{ opacity: 0, y: 30 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -30 }}
+                                                className="grid grid-cols-1 gap-6"
+                                            >
+                                                <div className="flex items-center justify-between mb-4 px-4">
+                                                    <h3 className="text-xs font-black uppercase tracking-[0.4em] text-gray-400">Identify Program Registry</h3>
+                                                    <span className="text-[10px] font-black text-primary-500 bg-primary-50 px-3 py-1 rounded-full">{filteredItems.length} Records Found</span>
+                                                </div>
+
+                                                {filteredItems.map((p, idx) => (
+                                                    <motion.div
+                                                        key={idx}
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: idx * 0.05 }}
+                                                        onClick={() => setPreviewProgram(p)}
+                                                        className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-xl hover:shadow-2xl hover:border-primary-200 hover:scale-[1.01] transition-all duration-500 cursor-pointer group flex flex-col sm:flex-row items-center gap-8 relative overflow-hidden"
                                                     >
-                                                        Adjust Registry Filters
-                                                    </button>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                                        <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
+                                                            <Sparkles size={24} />
+                                                        </div>
+
+                                                        <div className="flex-1 text-center sm:text-left">
+                                                            <h4 className="text-xl font-black text-indigo-950 mb-3 group-hover:text-primary-600 transition-colors leading-snug">
+                                                                {p.course_name || p.name || p.program_name || 'Untitled Course'}
+                                                            </h4>
+                                                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-8">
+                                                                <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest gap-2">
+                                                                    <Clock size={12} className="text-primary-500" />
+                                                                    {p.duration || 'N/A'}
+                                                                </div>
+                                                                <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest gap-2">
+                                                                    <Star size={12} className="text-orange-500" />
+                                                                    {p.intake || 'Flexible'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="h-14 px-8 rounded-2xl bg-gray-50 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-indigo-950 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
+                                                            Analyze Setup
+                                                            <ArrowRight size={16} className="ml-3 group-hover:translate-x-1 transition-transform" />
+                                                        </div>
+                                                    </motion.div>
+                                                ))}
+                                            </motion.div>
+                                        ) : (
+                                            /* PHASE 3: EMPTY RESULTS - Refined for compact space */
+                                            <motion.div
+                                                key="empty"
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className="flex flex-col items-center justify-center text-center bg-white rounded-[50px] border-2 border-dashed border-gray-100 p-20 py-32 shadow-xl"
+                                            >
+                                                <div className="h-24 w-24 bg-gray-50 rounded-[35px] flex items-center justify-center text-gray-200 mb-8 border border-gray-100 rotate-3 transition-transform hover:rotate-6">
+                                                    <Search size={40} />
+                                                </div>
+                                                <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">No Specific Programs Found</h3>
+                                                <p className="text-gray-400 font-medium max-w-md mx-auto text-lg leading-relaxed mb-10">
+                                                    No specific programs are listed for <span className="text-indigo-950 font-bold">{selections.university?.name}</span> + <span className="text-indigo-950 font-bold">{selections.level}</span>
+                                                    {selections.specialization && <> + <span className="text-indigo-950 font-bold">{selections.specialization.name || selections.specialization.specialization_name}</span></>}.
+                                                </p>
+                                                <button
+                                                    onClick={() => setStep(step - 1)}
+                                                    className="px-12 py-5 bg-gray-100 text-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-200 transition-all shadow-lg active:scale-95"
+                                                >
+                                                    Apply for {selections.course_name}
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             )}
                         </motion.div>
@@ -962,12 +885,11 @@ const ProgramSelectionFlow = () => {
                                         (step === 1 && !selections.country) ||
                                         (step === 2 && !selections.university) ||
                                         (step === 3 && !selections.level) ||
-                                        (step === 4 && !selections.category) ||
-                                        (step === 5 && !selections.specialization)
+                                        (step === 4 && !selections.category)
                                     }
                                     className={`
                                         group relative px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center shadow-lg active:scale-95 w-full md:w-auto justify-center
-                                        ${!((step === 1 && !selections.country) || (step === 2 && !selections.university) || (step === 3 && !selections.level) || (step === 4 && !selections.category) || (step === 5 && !selections.specialization))
+                                        ${!((step === 1 && !selections.country) || (step === 2 && !selections.university) || (step === 3 && !selections.level) || (step === 4 && !selections.category))
                                             ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-600/20'
                                             : 'bg-gray-100 text-gray-300 border border-gray-100 cursor-not-allowed shadow-none'}
                                     `}
@@ -980,7 +902,7 @@ const ProgramSelectionFlow = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 };
 

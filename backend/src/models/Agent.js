@@ -92,6 +92,38 @@ const agentSchema = new mongoose.Schema({
   termsAcceptedAt: Date,
   dataConsentAt: Date,
 
+  // Document Storage Paths
+  documents: {
+    idProof: {
+      type: String,
+      default: null
+    },
+    companyLicence: {
+      type: String,
+      default: null
+    },
+    agentPhoto: {
+      type: String,
+      default: null
+    },
+    identityDocument: {
+      type: String,
+      default: null
+    },
+    companyRegistration: {
+      type: String,
+      default: null
+    },
+    resume: {
+      type: String,
+      default: null
+    },
+    companyPhoto: {
+      type: String,
+      default: null
+    }
+  },
+
   // Status fields
   status: {
     type: String,

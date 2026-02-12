@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const otpController = require('../controllers/otpController');
-const { verifyReferralCookie } = require('../middleware/referralValidation');
+const { verifyReferralCookie } = require('../middlewares/referralValidation');
 
 /**
  * OTP Routes

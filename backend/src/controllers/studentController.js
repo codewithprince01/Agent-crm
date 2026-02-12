@@ -1,6 +1,7 @@
 const Student = require('../models/Student');
 const Agent = require('../models/Agent');
 const User = require('../models/User');
+const Application = require('../models/Application'); // Added Application model
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
@@ -132,9 +133,25 @@ class StudentController {
       const referrerIds = students.map(s => s.referredBy).filter(Boolean);
       const referrerMap = await StudentController.resolveReferrerNames(referrerIds);
 
+      // Check which students have applications
+      // Check which students have applications and count them
+      const studentIds = students.map(s => s._id);
+
+      const applicationCounts = await Application.aggregate([
+        { $match: { studentId: { $in: studentIds } } },
+        { $group: { _id: '$studentId', count: { $sum: 1 } } }
+      ]);
+
+      const countMap = {};
+      applicationCounts.forEach(app => {
+        countMap[app._id.toString()] = app.count;
+      });
+
       // Map to frontend-friendly format
       const formattedStudents = students.map(student => {
         const refInfo = student.referredBy ? referrerMap[student.referredBy.toString()] : null;
+        const appCount = countMap[student._id.toString()] || 0;
+
         return {
           _id: student._id,
           id: student._id,
@@ -151,6 +168,8 @@ class StudentController {
           referredBy: student.referredBy,
           referredByName: refInfo ? refInfo.name : (student.referredBy ? 'Unknown' : 'Direct'),
           referredByRole: refInfo ? refInfo.role : (student.referredBy ? 'N/A' : 'Direct'),
+          isApplied: appCount > 0,
+          applicationCount: appCount,
           createdAt: student.createdAt,
           updatedAt: student.updatedAt
         };
@@ -206,13 +225,17 @@ class StudentController {
       const referrerMap = await StudentController.resolveReferrerNames([student.referredBy]);
       const refInfo = student.referredBy ? referrerMap[student.referredBy.toString()] : null;
 
+      // Fetch applications for this student
+      const applications = await Application.find({ studentId: id }).sort({ createdAt: -1 });
+
       return res.status(200).json({
         success: true,
         data: {
           student: {
             ...student.toObject({ getters: true, virtuals: true }),
             referredByName: refInfo ? refInfo.name : (student.referredBy ? 'Unknown' : 'Direct'),
-            referredByRole: refInfo ? refInfo.role : (student.referredBy ? 'N/A' : 'Direct')
+            referredByRole: refInfo ? refInfo.role : (student.referredBy ? 'N/A' : 'Direct'),
+            applications // Include applications in the response
           }
         }
       });

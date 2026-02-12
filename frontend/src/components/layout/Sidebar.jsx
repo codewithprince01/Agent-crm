@@ -124,7 +124,9 @@ const Sidebar = ({ isOpen, onClose }) => {
           },
           { path: "/commissions", icon: FiDollarSign, label: "Commissions" },
           { path: "/payouts", icon: FiTrendingUp, label: "Payouts" },
+          { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
+          { icon: FiLogOut, label: "Logout", onClick: handleLogoutConfirm },
         ];
 
       case ROLES.AGENT:
@@ -149,7 +151,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       case ROLES.STUDENT:
         return [
           { path: "/dashboard", icon: FiHome, label: "Dashboard" },
-          { path: "/applications", icon: FiFileText, label: "Applied Colleges" },
+          { path: "/my-applications", icon: FiFileText, label: "Applied Colleges" },
           { onClick: () => { }, icon: FiHeart, label: "Shortlisted Colleges" },
           { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
@@ -282,11 +284,11 @@ const Sidebar = ({ isOpen, onClose }) => {
           <div className="flex items-center space-x-4">
             <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10 shadow-inner">
               <span className="text-lg font-black text-white">
-                {user?.name?.charAt(0).toUpperCase()}
+                {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || user?.role?.charAt(0) || 'U'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">{user?.name}</p>
+              <p className="text-sm font-bold text-white truncate">{user?.name || user?.email || 'User'}</p>
               <p className="text-[10px] uppercase font-black tracking-widest text-primary-200 opacity-70 truncate">
                 {user?.role?.replace("_", " ")}
               </p>

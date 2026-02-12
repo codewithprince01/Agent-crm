@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, UserPlus, Filter, User, GraduationCap, ArrowRight, RefreshCw, Mail, Globe, Clock } from 'lucide-react';
 import applicationService from '../../services/applicationService';
 import { useToast } from '../../components/ui/toast';
@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux';
 
 const PendingStudents = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { error: showError } = useToast();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -17,6 +18,16 @@ const PendingStudents = () => {
     useEffect(() => {
         fetchPendingStudents();
     }, []);
+
+    // Auto-navigate to program selection if studentId is in URL (for adding multiple applications)
+    const studentIdParam = searchParams.get('studentId');
+    useEffect(() => {
+        if (studentIdParam) {
+            // Directly navigate to program selection without checking pending list
+            // This allows adding multiple courses to already-applied students
+            navigate(`/program-selection/${studentIdParam}`);
+        }
+    }, [studentIdParam, navigate]);
 
     const fetchPendingStudents = async () => {
         try {
@@ -123,7 +134,7 @@ const PendingStudents = () => {
                                                 {student.firstName} {student.lastName}
                                             </h3>
                                             <p className="text-[10px] font-black uppercase tracking-widest text-primary-500/60 mt-0.5">
-                                                ID: {student.studentId || 'N/A'}
+                                                ID: {student._id ? student._id.toString().slice(-8).toUpperCase() : 'N/A'}
                                             </p>
                                         </div>
                                     </div>
@@ -141,11 +152,11 @@ const PendingStudents = () => {
                                 <div className="grid grid-cols-2 gap-4 mb-8">
                                     <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100/50">
                                         <div className="flex items-center text-gray-400 mb-1">
-                                            <Globe size={14} className="mr-1.5" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Passport</span>
+                                            <Mail size={14} className="mr-1.5" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Phone</span>
                                         </div>
                                         <p className="text-xs font-bold text-gray-700 font-mono italic">
-                                            {student.passportNumber || "MISSING"}
+                                            {student.phone || "MISSING"}
                                         </p>
                                     </div>
                                     <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100/50">

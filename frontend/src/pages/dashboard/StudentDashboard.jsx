@@ -196,6 +196,7 @@ const StudentDashboard = () => {
           value={stats.totalApplications}
           bgColor="bg-blue-50"
           iconColor="text-blue-600"
+          onClick={() => navigate('/my-applications')}
         />
         <StatCard
           icon={CheckCircle}
@@ -262,7 +263,7 @@ const StudentDashboard = () => {
               <h2 className="text-lg font-bold text-gray-900">Recent Applications</h2>
               {applications.length > 0 && (
                 <button
-                  onClick={() => navigate('/applications')}
+                  onClick={() => navigate('/my-applications')}
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
                 >
                   View All <ArrowRight className="w-4 h-4" />
@@ -427,8 +428,11 @@ const StudentDashboard = () => {
 };
 
 // Stat Card Component
-const StatCard = ({ icon: Icon, label, value, bgColor, iconColor }) => (
-  <div className="bg-white rounded-xl border border-gray-200 p-6">
+const StatCard = ({ icon: Icon, label, value, bgColor, iconColor, onClick }) => (
+  <div
+    className={`bg-white rounded-xl border border-gray-200 p-6 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+    onClick={onClick}
+  >
     <div className="flex items-center gap-4">
       <div className={`w-12 h-12 ${bgColor} rounded-lg flex items-center justify-center`}>
         <Icon className={`w-6 h-6 ${iconColor}`} />
@@ -462,22 +466,25 @@ const QuickActionButton = ({ icon: Icon, label, onClick, color }) => {
 };
 
 // Application Card Component
-const ApplicationCard = ({ application, getStatusColor, getStatusLabel }) => (
-  <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex-1">
-        <h3 className="font-bold text-gray-900 text-sm">{application.universityName || 'University Name'}</h3>
-        <p className="text-xs text-gray-600 mt-1">{application.courseName || 'Course Name'}</p>
-        <span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-medium ${getStatusColor(application.applicationStatus)}`}>
-          {getStatusLabel(application.applicationStatus)}
-        </span>
+const ApplicationCard = ({ application, getStatusColor, getStatusLabel }) => {
+  const navigate = useNavigate();
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/applications/${application._id}`)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-900 text-sm">{application.programSnapshot?.universityName || 'University Name'}</h3>
+          <p className="text-xs text-gray-600 mt-1">{application.programSnapshot?.programName || 'Course Name'}</p>
+          <span className={`inline-block mt-2 px-2 py-1 rounded text-xs font-medium ${getStatusColor(application.stage)}`}>
+            {getStatusLabel(application.stage)}
+          </span>
+        </div>
+        <button className="text-gray-400 hover:text-gray-600">
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
-      <button className="text-gray-400 hover:text-gray-600">
-        <ArrowRight className="w-4 h-4" />
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 // Profile Field Component
 const ProfileField = ({ icon: Icon, label, value }) => (
