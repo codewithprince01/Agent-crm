@@ -9,7 +9,7 @@ class ExternalApiController {
     static async getCountries(req, res) {
         try {
             const responseData = await ExternalApiService.fetchCountries();
-            const data = responseData.data || [];
+            const data = Array.isArray(responseData) ? responseData : (responseData.data || []);
 
             // If user is AGENT, strictly filter by assigned countries
             if (req.userRole === 'AGENT') {
@@ -24,6 +24,7 @@ class ExternalApiController {
                 return ResponseHandler.success(res, 'Agent specific countries retrieved', filteredCountries);
             }
 
+            // For ADMIN and SUPER_ADMIN, return all countries
             return ResponseHandler.success(res, 'All countries retrieved', data);
         } catch (error) {
             logger.error('Proxy Countries Error', { error: error.message });
@@ -39,7 +40,7 @@ class ExternalApiController {
             // Support both 'website' and 'country' query params from frontend
             const website = req.query.website || req.query.country;
             const responseData = await ExternalApiService.fetchUniversities(website);
-            let universities = responseData.data || [];
+            let universities = Array.isArray(responseData) ? responseData : (responseData.data || []);
 
             if (req.userRole === 'AGENT') {
                 const allowedCountries = req.user.accessibleCountries || [];
@@ -84,7 +85,8 @@ class ExternalApiController {
             if (!university_id) return ResponseHandler.badRequest(res, 'university_id is required');
 
             const responseData = await ExternalApiService.fetchLevels(university_id);
-            return ResponseHandler.success(res, 'Levels retrieved', responseData.data || []);
+            const data = Array.isArray(responseData) ? responseData : (responseData.data || []);
+            return ResponseHandler.success(res, 'Levels retrieved', data);
         } catch (error) {
             return ResponseHandler.serverError(res, 'Failed to fetch levels', error);
         }
@@ -97,7 +99,8 @@ class ExternalApiController {
         try {
             const { university_id, level } = req.query;
             const responseData = await ExternalApiService.fetchCategories(university_id, level);
-            return ResponseHandler.success(res, 'Categories retrieved', responseData.data || []);
+            const data = Array.isArray(responseData) ? responseData : (responseData.data || []);
+            return ResponseHandler.success(res, 'Categories retrieved', data);
         } catch (error) {
             return ResponseHandler.serverError(res, 'Failed to fetch categories', error);
         }
@@ -110,7 +113,8 @@ class ExternalApiController {
         try {
             const { university_id, level, course_category_id } = req.query;
             const responseData = await ExternalApiService.fetchSpecializations(university_id, level, course_category_id);
-            return ResponseHandler.success(res, 'Specializations retrieved', responseData.data || []);
+            const data = Array.isArray(responseData) ? responseData : (responseData.data || []);
+            return ResponseHandler.success(res, 'Specializations retrieved', data);
         } catch (error) {
             return ResponseHandler.serverError(res, 'Failed to fetch specializations', error);
         }
@@ -122,7 +126,8 @@ class ExternalApiController {
     static async getPrograms(req, res) {
         try {
             const responseData = await ExternalApiService.fetchPrograms(req.query);
-            return ResponseHandler.success(res, 'Programs retrieved', responseData.data || []);
+            const data = Array.isArray(responseData) ? responseData : (responseData.data || []);
+            return ResponseHandler.success(res, 'Programs retrieved', data);
         } catch (error) {
             return ResponseHandler.serverError(res, 'Failed to fetch programs', error);
         }

@@ -73,7 +73,6 @@ import RequireReferral from "./components/guards/RequireReferral";
 // Application Pages
 import ApplicationList from "./pages/applications/ApplicationList";
 import ApplicationForm from "./pages/applications/ApplicationForm";
-import ApplicationDetails from "./pages/applications/ApplicationDetails";
 import AppliedStudents from "./pages/applications/AppliedStudents";
 import PendingStudents from "./pages/applications/PendingStudents";
 import ProgramSelectionFlow from "./pages/applications/ProgramSelectionFlow";
@@ -448,14 +447,6 @@ function AppContent() {
               allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}
             >
               <ApplicationForm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="applications/:id"
-          element={
-            <ProtectedRoute>
-              <ApplicationDetails />
             </ProtectedRoute>
           }
         />

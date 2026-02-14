@@ -112,6 +112,8 @@ app.use('/api/upload', require('./src/routes/uploadRoutes'));
 // Serve static files
 const path = require('path');
 app.use('/upload', express.static(path.join(__dirname, 'upload')));
+// New Student Documents Path (Specific match before legacy)
+app.use('/uploads/documents/students', express.static(path.join(__dirname, 'uploads/documents/students')));
 // Fix for legacy wrong URLs (map /uploads/documents -> upload/student/documents)
 app.use('/uploads/documents', express.static(path.join(__dirname, 'upload/student/documents')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

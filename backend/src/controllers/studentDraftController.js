@@ -5,6 +5,9 @@ const { generateTempStudentId } = require('../utils/generateTempId');
  * Map form fields to database schema fields
  */
 const mapFormToSchema = (formData) => {
+    // Helper to convert empty strings to undefined (to avoid enum/date validation errors)
+    const sanitize = (val) => (val === '' || val === null ? undefined : val);
+
     return {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -13,24 +16,24 @@ const mapFormToSchema = (formData) => {
         countryCode: formData.c_code,
         fatherName: formData.father,
         motherName: formData.mother,
-        dateOfBirth: formData.dob,
+        dateOfBirth: sanitize(formData.dob),
         firstLanguage: formData.first_language,
-        nationality: formData.nationality,
+        nationality: sanitize(formData.nationality), // Enum-like (if restricted)
         passportNumber: formData.passport_number,
-        passportExpiry: formData.passport_expiry,
-        maritalStatus: formData.marital_status,
-        gender: formData.gender,
+        passportExpiry: sanitize(formData.passport_expiry),
+        maritalStatus: sanitize(formData.marital_status), // Enum
+        gender: sanitize(formData.gender), // Enum
         address: formData.home_address,
         city: formData.city,
         state: formData.state,
         country: formData.country,
         postalCode: formData.zipcode,
-        educationCountry: formData.education_country,
-        highestLevel: formData.highest_level,
-        gradingScheme: formData.grading_scheme,
+        educationCountry: sanitize(formData.education_country),
+        highestLevel: sanitize(formData.highest_level),
+        gradingScheme: sanitize(formData.grading_scheme),
         gradeAverage: formData.grade_average,
         examType: formData.exam_type,
-        examDate: formData.exam_date,
+        examDate: sanitize(formData.exam_date),
         listeningScore: formData.listening_score,
         readingScore: formData.reading_score,
         writingScore: formData.writing_score,
@@ -39,7 +42,9 @@ const mapFormToSchema = (formData) => {
         visaRefusal: formData.visa_refusal,
         studyPermit: formData.study_permit,
         backgroundDetails: formData.background_details,
-        referredBy: formData.referredBy
+        referredBy: formData.referredBy,
+        identityProofType: sanitize(formData.identityProofType) || sanitize(formData.identity_type), // Handle both keys
+        identityProofNumber: formData.identityProofNumber || formData.identity_number
     };
 };
 

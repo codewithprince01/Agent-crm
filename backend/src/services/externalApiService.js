@@ -1,6 +1,6 @@
 const logger = require('../utils/logger');
 
-const BASE_URL = 'https://www.educationmalaysia.in/api/search-and-apply';
+const BASE_URL = process.env.EXTERNAL_API_BASE_URL;
 
 /**
  * Service to interact with the external "Search and Apply" API
@@ -12,13 +12,17 @@ class ExternalApiService {
     static async fetchCountries() {
         try {
             const response = await fetch(`${BASE_URL}/countries`);
-            if (response.status === 404) return { success: true, data: [] };
+            if (response.status === 404) {
+                logger.warn('External API returned 404 for countries, returning empty list');
+                return { success: true, data: [] };
+            }
             if (!response.ok) throw new Error(`External API error: ${response.statusText}`);
             const data = await response.json();
             return data;
         } catch (error) {
             logger.error('Error fetching countries from external API', { error: error.message });
-            throw error;
+            // Return empty list on failure
+            return { success: false, data: [] };
         }
     }
 

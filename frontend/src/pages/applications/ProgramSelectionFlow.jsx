@@ -54,23 +54,41 @@ const ProgramSelectionFlow = () => {
         const init = async () => {
             try {
                 setLoading(true);
-                const [studentRes, countriesRes] = await Promise.all([
+                console.log("Initializing Program Selection for Student ID:", studentId);
+
+                const [studentRes, countriesRes] = await Promise.allSettled([
                     studentService.getStudentById(studentId),
                     externalSearchService.getCountries()
                 ]);
 
-                const studentData = studentRes.data?.student || studentRes.data;
-                const countries = countriesRes.data || [];
+                console.log("Student Result:", studentRes);
+                console.log("Countries Result:", countriesRes);
 
-                setStudent(studentData);
+                if (studentRes.status === 'fulfilled') {
+                    const studentData = studentRes.value.data?.student || studentRes.value.data;
+                    setStudent(studentData);
+                } else {
+                    console.error("Failed to fetch student:", studentRes.reason);
+                    showError("Failed to retrieve student details.");
+                    // Return early as student is critical
+                    setLoading(false);
+                    return;
+                }
+
+                const countries = countriesRes.status === 'fulfilled'
+                    ? (countriesRes.value.data || (Array.isArray(countriesRes.value) ? countriesRes.value : []))
+                    : [];
                 setData(prev => ({ ...prev, countries }));
 
                 // Handle no countries (Access Control)
                 if (countries.length === 0) {
+                    console.warn("No countries found. Access restricted?");
                     // We stay on step 1 but nothing will be shown except empty state
                     setLoading(false);
                     return;
                 }
+
+                // ... rest of auto-skip logic ...
 
                 // Auto-skip logic for initial load
                 let currentStep = 1;
@@ -159,7 +177,8 @@ const ProgramSelectionFlow = () => {
                 setStep(finalStep);
             } catch (err) {
                 console.error("Init error:", err);
-                showError("Failed to initialize selection flow");
+                console.error("Full init error details:", err.response || err.message);
+                // showError("Failed to initialize selection flow");
             } finally {
                 setLoading(false);
             }

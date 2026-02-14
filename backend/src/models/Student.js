@@ -101,6 +101,13 @@ const studentSchema = new mongoose.Schema({
   postalCode: String,
   homeContactNumber: String,
 
+  // Identity Proof
+  identityProofType: {
+    type: String,
+    enum: ['Aadhaar', 'PAN', 'Passport', 'Driving License']
+  },
+  identityProofNumber: String,
+
   // Academic & Education
   academicLevel: String,
   educationCountry: String,

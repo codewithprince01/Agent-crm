@@ -204,7 +204,14 @@ class StudentController {
     try {
       const { id } = req.params;
 
-      const student = await Student.findById(id).select('-password -__v');
+      let query = {};
+      if (mongoose.isValidObjectId(id)) {
+        query = { $or: [{ _id: id }, { studentId: id }, { tempStudentId: id }] };
+      } else {
+        query = { $or: [{ studentId: id }, { tempStudentId: id }] };
+      }
+
+      const student = await Student.findOne(query).select('-password -__v');
 
       if (!student) {
         return res.status(404).json({

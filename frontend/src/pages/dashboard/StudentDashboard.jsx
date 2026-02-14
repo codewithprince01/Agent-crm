@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import apiClient from '../../services/apiClient';
+import ProgramDetailsModal from '../../components/students/ProgramDetailsModal';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -29,9 +30,9 @@ const StudentDashboard = () => {
       totalApplications: 0,
       profileCompletion: 0,
       documentsUploaded: 0,
-      pendingReviews: 0
     }
   });
+  const [selectedApp, setSelectedApp] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -63,7 +64,6 @@ const StudentDashboard = () => {
         profileCompletion: completionData.overall,
         profileCompletionData: completionData,
         documentsUploaded: profile.documents?.length || 0,
-        pendingReviews: applications.filter(app => app.applicationStatus === 'submitted').length
       };
 
       setDashboardData({ profile, applications: applications.slice(0, 5), stats });
@@ -189,7 +189,7 @@ const StudentDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           icon={FileText}
           label="Total Applications"
@@ -212,13 +212,6 @@ const StudentDashboard = () => {
           bgColor="bg-purple-50"
           iconColor="text-purple-600"
         />
-        <StatCard
-          icon={Clock}
-          label="Pending Reviews"
-          value={stats.pendingReviews}
-          bgColor="bg-orange-50"
-          iconColor="text-orange-600"
-        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -227,11 +220,11 @@ const StudentDashboard = () => {
           {/* Quick Actions */}
           <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <QuickActionButton
-                icon={Plus}
-                label="New Application"
-                onClick={() => navigate('/applications/new')}
+                icon={CheckCircle}
+                label="My Application"
+                onClick={() => navigate('/my-applications')}
                 color="blue"
               />
               <QuickActionButton
@@ -286,7 +279,13 @@ const StudentDashboard = () => {
             ) : (
               <div className="space-y-3">
                 {applications.map((app) => (
-                  <ApplicationCard key={app._id} application={app} getStatusColor={getStatusColor} getStatusLabel={getStatusLabel} />
+                  <ApplicationCard
+                    key={app._id}
+                    application={app}
+                    getStatusColor={getStatusColor}
+                    getStatusLabel={getStatusLabel}
+                    onClick={() => setSelectedApp(app)}
+                  />
                 ))}
               </div>
             )}
@@ -423,6 +422,15 @@ const StudentDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Application Details Modal */}
+      {selectedApp && (
+        <ProgramDetailsModal
+          isOpen={!!selectedApp}
+          onClose={() => setSelectedApp(null)}
+          application={selectedApp}
+        />
+      )}
     </div>
   );
 };
@@ -466,10 +474,9 @@ const QuickActionButton = ({ icon: Icon, label, onClick, color }) => {
 };
 
 // Application Card Component
-const ApplicationCard = ({ application, getStatusColor, getStatusLabel }) => {
-  const navigate = useNavigate();
+const ApplicationCard = ({ application, getStatusColor, getStatusLabel, onClick }) => {
   return (
-    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/applications/${application._id}`)}>
+    <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h3 className="font-bold text-gray-900 text-sm">{application.programSnapshot?.universityName || 'University Name'}</h3>

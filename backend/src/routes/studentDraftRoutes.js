@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const studentDraftController = require('../controllers/studentDraftController');
+const studentUploadController = require('../controllers/studentUploadController');
 const { validateReferral, verifyReferralCookie } = require('../middlewares/referralValidation');
 
 /**
@@ -10,6 +11,12 @@ const { validateReferral, verifyReferralCookie } = require('../middlewares/refer
 
 // Step 1: Create initial draft (requires valid referral cookie)
 router.post('/step1', verifyReferralCookie, studentDraftController.createDraft);
+
+// Upload Document
+router.post('/:tempId/upload', verifyReferralCookie, studentUploadController.uploadDocument);
+
+// Upload Documents (Batch)
+router.post('/:tempId/upload-batch', verifyReferralCookie, studentUploadController.uploadBatchDocuments);
 
 // Update draft step (requires valid referral cookie)
 router.put('/:tempId/step/:stepNumber', verifyReferralCookie, studentDraftController.updateDraftStep);

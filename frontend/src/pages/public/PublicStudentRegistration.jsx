@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Save, ArrowRight, Check, User, GraduationCap, FileText, Info } from 'lucide-react';
+import { ArrowLeft, Save, ArrowRight, Check, User, GraduationCap, FileText, Info, UploadCloud } from 'lucide-react';
 import { useToast } from '../../components/ui/toast';
 import { getTempStudentId, saveTempStudentId, clearTempStudentId, getDaysUntilExpiry } from '../../utils/draftStorage';
 import EmailVerification from '../../components/EmailVerification';
+import DocumentUpload from '../../components/common/DocumentUpload';
 
 const PublicStudentRegistration = () => {
     const navigate = useNavigate();
@@ -12,13 +13,17 @@ const PublicStudentRegistration = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [resumingDraft, setResumingDraft] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState({}); // Track files selected for batch upload
+    const [uploadingFiles, setUploadingFiles] = useState(false);
     const [referralInfo, setReferralInfo] = useState(null);
     const [emailVerified, setEmailVerified] = useState(false); // NEW: Track email verification
+    const [errors, setErrors] = useState({}); // Validation errors state
 
     const generalRef = useRef(null);
     const educationRef = useRef(null);
     const testScoresRef = useRef(null);
     const backgroundRef = useRef(null);
+    const documentsRef = useRef(null);
 
     const [formData, setFormData] = useState({
         // Step 1: Personal Information
@@ -60,6 +65,10 @@ const PublicStudentRegistration = () => {
         visa_refusal: '',
         study_permit: '',
         background_details: '',
+        // Step 5: Documents & ID Proof
+        identity_type: '',
+        identity_number: '',
+        documents: [], // Array to store { documentType, documentUrl, documentName }
     });
 
     // On component mount: Check for draft or referral
@@ -125,52 +134,153 @@ const PublicStudentRegistration = () => {
     };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+
+        // Restrict score fields and grade average to positive numbers and decimals
+        if (['listening_score', 'reading_score', 'writing_score', 'speaking_score', 'overall_score', 'grade_average'].includes(name)) {
+            // Allow empty, or matching regex for partial decimal (e.g. "10.")
+            if (value !== '' && !/^\d*\.?\d*$/.test(value)) {
+                return;
+            }
+        }
+
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        // Clear specific error when user types
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
     };
 
     // Validate current step before saving/proceeding
     const validateCurrentStep = () => {
-        switch (currentStep) {
-            case 1:
-                // Step 1: Personal Information - Required fields
-                if (!formData.firstName || !formData.firstName.trim()) { toast.error('First Name is required'); return false; }
-                if (!formData.lastName || !formData.lastName.trim()) { toast.error('Last Name is required'); return false; }
-                if (!formData.email || !formData.email.trim()) { toast.error('Email Address is required'); return false; }
-                if (!formData.mobile || !formData.mobile.trim()) { toast.error('Mobile Number is required'); return false; }
-                if (!formData.dob) { toast.error('Date of Birth is required'); return false; }
-                if (!formData.nationality) { toast.error('Nationality/Citizenship is required'); return false; }
-                if (!emailVerified) { toast.error('Please verify your email address before proceeding'); return false; }
-                break;
+        const newErrors = {};
+        let isValid = true;
+        const today = new Date();
 
-            case 2:
-                // Step 2: Education - Mandatory fields
-                if (!formData.education_country) { toast.error('Country of Education is required'); return false; }
-                if (!formData.highest_level) { toast.error('Highest Level of Education is required'); return false; }
-                if (!formData.grading_scheme) { toast.error('Grading Scheme is required'); return false; }
-                if (!formData.grade_average || !formData.grade_average.trim()) { toast.error('Grade Average is required'); return false; }
-                break;
+        // Helper to set error
+        const setError = (field, message) => {
+            newErrors[field] = message;
+            isValid = false;
+        };
 
-            case 3:
-                // Step 3: Test Scores - Mandatory fields
-                if (!formData.exam_type) { toast.error('English Exam Type is required'); return false; }
-                if (!formData.exam_date) { toast.error('Exam Date is required'); return false; }
-                if (!formData.listening_score || !formData.listening_score.trim()) { toast.error('Listening Score is required'); return false; }
-                if (!formData.reading_score || !formData.reading_score.trim()) { toast.error('Reading Score is required'); return false; }
-                if (!formData.writing_score || !formData.writing_score.trim()) { toast.error('Writing Score is required'); return false; }
-                if (!formData.speaking_score || !formData.speaking_score.trim()) { toast.error('Speaking Score is required'); return false; }
-                if (!formData.overall_score || !formData.overall_score.trim()) { toast.error('Overall Score is required'); return false; }
-                break;
+        if (currentStep === 1) {
+            if (!formData.firstName?.trim()) setError('firstName', 'First Name is required');
+            if (!formData.lastName?.trim()) setError('lastName', 'Last Name is required');
+            if (!formData.email?.trim()) setError('email', 'Email Address is required');
+            if (!formData.mobile?.trim()) setError('mobile', 'Mobile Number is required');
+            if (!formData.nationality) setError('nationality', 'Nationality is required');
 
-            case 4:
-                // Step 4: Background - Mandatory fields
-                if (!formData.visa_refusal) { toast.error('Visa Refusal history must be specified'); return false; }
-                if (!formData.study_permit) { toast.error('Study Permit status is required'); return false; }
-                break;
+            // DOB Validation
+            if (!formData.dob) {
+                setError('dob', 'Date of Birth is required');
+            } else {
+                const dobDate = new Date(formData.dob);
+                const minYear = 1900;
+                const maxYear = today.getFullYear();
 
-            default:
-                break;
+                if (dobDate > today) setError('dob', 'Date of Birth cannot be in the future');
+                else if (dobDate.getFullYear() < minYear) setError('dob', 'Invalid Date of Birth');
+                else if (dobDate.getFullYear().toString().length > 4) setError('dob', 'Invalid Year');
+            }
+
+            // Passport Expiry Validation (Must be > 6 months from today if provided)
+            if (formData.passport_expiry) {
+                const expiryDate = new Date(formData.passport_expiry);
+                const sixMonthsFuture = new Date();
+                sixMonthsFuture.setMonth(sixMonthsFuture.getMonth() + 6);
+                const maxExpiryYear = today.getFullYear() + 20; // Reasonable cap (20 years)
+
+                if (expiryDate < today) setError('passport_expiry', 'Passport has expired');
+                else if (expiryDate < sixMonthsFuture) setError('passport_expiry', 'Passport must be valid for at least 6 months');
+                else if (expiryDate.getFullYear() > maxExpiryYear) setError('passport_expiry', 'Invalid Expiry Date (Year too far in future)');
+                else if (expiryDate.getFullYear().toString().length > 4) setError('passport_expiry', 'Invalid Year');
+            }
+
+            if (!emailVerified) {
+                toast.error('Please verify your email address before proceeding');
+                isValid = false;
+            }
         }
-        return true;
+
+        if (currentStep === 2) {
+            if (!formData.education_country) setError('education_country', 'Country is required');
+            if (!formData.highest_level) setError('highest_level', 'Highest Level is required');
+            if (!formData.grading_scheme) setError('grading_scheme', 'Grading Scheme is required');
+            if (!formData.grade_average?.trim()) setError('grade_average', 'Grade Average is required');
+        }
+
+        if (currentStep === 3) {
+            if (!formData.exam_type) setError('exam_type', 'Exam Type is required');
+            if (!formData.exam_date) {
+                setError('exam_date', 'Exam Date is required');
+            } else {
+                const examDate = new Date(formData.exam_date);
+                if (examDate.getFullYear().toString().length > 4) setError('exam_date', 'Invalid Year');
+                // Exam date can be slightly in future if booked? Usually score report implies past.
+                // But let's just cap the year to reasonable size.
+            }
+
+            // Score Validation Helper
+            const validateScore = (field, label) => {
+                const val = formData[field];
+                if (!val) {
+                    setError(field, `${label} is required`);
+                } else if (isNaN(val) || Number(val) < 0) {
+                    setError(field, 'Must be a positive number');
+                } else if (!/^\d+(\.\d{1,2})?$/.test(val)) {
+                    // Allow 1 or 2 decimal places max, or integer
+                    // Actually, usually checks against alphabets are covered by isNaN, but let's be strict
+                    setError(field, 'Invalid format (e.g. 7.5)');
+                }
+            };
+
+            validateScore('listening_score', 'Listening Score');
+            validateScore('reading_score', 'Reading Score');
+            validateScore('writing_score', 'Writing Score');
+            validateScore('speaking_score', 'Speaking Score');
+            validateScore('overall_score', 'Overall Score');
+        }
+
+        if (currentStep === 4) {
+            if (!formData.visa_refusal) setError('visa_refusal', 'Please select an option');
+            if (!formData.study_permit) setError('study_permit', 'Please select an option');
+        }
+
+        if (currentStep === 5) {
+            if (!formData.identity_type) setError('identity_type', 'ID Proof Type is required');
+            if (!formData.identity_number?.trim()) setError('identity_number', 'ID Number is required');
+
+
+
+            // Document existence check (chk uploaded OR selected)
+            const getDoc = (type) => {
+                const uploaded = formData.documents?.find(d => d.documentType === type);
+                const selected = selectedFiles[type];
+                return uploaded || selected;
+            };
+            const docErrors = [];
+
+            if (!getDoc('photo')) docErrors.push('Student Photo');
+            if (!getDoc('identity_proof')) docErrors.push('Identity Proof');
+            if (!getDoc('marksheet_10')) docErrors.push('10th Marksheet');
+            if (!getDoc('marksheet_12')) docErrors.push('12th Marksheet');
+            if (!getDoc('resume')) docErrors.push('Resume');
+
+            if (docErrors.length > 0) {
+                toast.error(`Please upload: ${docErrors.join(', ')}`);
+                isValid = false;
+            }
+        }
+
+        setErrors(newErrors);
+
+        // Show generic toast if validation failed
+        if (!isValid && Object.keys(newErrors).length > 0) {
+            toast.error('Please fix the errors in the form');
+        }
+
+        return isValid;
     };
 
     // Save current step
@@ -238,7 +348,7 @@ const PublicStudentRegistration = () => {
         }
 
         await handleSaveStep();
-        if (currentStep < 4) {
+        if (currentStep < 5) {
             setCurrentStep(currentStep + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -264,6 +374,12 @@ const PublicStudentRegistration = () => {
             // Final step validation
             if (!validateCurrentStep()) {
                 return;
+            }
+
+            // Upload any pending files first
+            if (Object.keys(selectedFiles).length > 0) {
+                const uploadSuccess = await uploadAllDocuments(tempId);
+                if (!uploadSuccess) return;
             }
 
             // Set a default password or ask user for password
@@ -314,7 +430,86 @@ const PublicStudentRegistration = () => {
         { number: 2, title: 'Education', icon: GraduationCap },
         { number: 3, title: 'Test Scores', icon: FileText },
         { number: 4, title: 'Background', icon: Info },
+        { number: 5, title: 'Documents', icon: UploadCloud },
     ];
+
+    // Helper to update document state after upload
+    const handleDocumentUpload = (type, documentData) => {
+        setFormData(prev => {
+            // Remove existing doc of same type if it's a single-file type
+            const newDocs = prev.documents ? prev.documents.filter(d => d.documentType !== type) : [];
+            return {
+                ...prev,
+                documents: [...newDocs, documentData]
+            };
+        });
+
+        // Remove from selectedFiles since it's now uploaded
+        setSelectedFiles(prev => {
+            const newSelected = { ...prev };
+            delete newSelected[type];
+            return newSelected;
+        });
+    };
+
+    const handleFileSelection = (type, file) => {
+        setSelectedFiles(prev => ({
+            ...prev,
+            [type]: file
+        }));
+
+        // Also clear error if any
+        if (errors[type]) {
+            setErrors(prev => ({ ...prev, [type]: '' }));
+        }
+    };
+
+    const uploadAllDocuments = async (tempId) => {
+        try {
+            setUploadingFiles(true);
+            const formDataUpload = new FormData();
+
+            Object.entries(selectedFiles).forEach(([type, file]) => {
+                formDataUpload.append(type, file);
+            });
+
+            const response = await axios.post(`http://localhost:5000/api/students/draft/${tempId}/upload-batch`, formDataUpload, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                withCredentials: true
+            });
+
+            if (response.data.success) {
+                // Update formData with the returned documents
+                setFormData(prev => {
+                    // For each uploaded doc, remove old and add new
+                    let updatedDocs = [...(prev.documents || [])];
+
+                    response.data.documents.forEach(doc => {
+                        updatedDocs = updatedDocs.filter(d => d.documentType !== doc.documentType);
+                        updatedDocs.push(doc);
+                    });
+
+                    return { ...prev, documents: updatedDocs };
+                });
+
+                setSelectedFiles({}); // Clear selection
+                toast.success('Documents uploaded successfully!');
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Batch upload error:', error);
+            toast.error('Failed to upload documents. Please try again.');
+            return false;
+        } finally {
+            setUploadingFiles(false);
+        }
+    };
+
+    const getDocumentUrl = (type) => {
+        const doc = formData.documents?.find(d => d.documentType === type);
+        return doc ? doc.documentUrl : null;
+    };
 
     if (resumingDraft) {
         return (
@@ -405,8 +600,9 @@ const PublicStudentRegistration = () => {
                                         value={formData.firstName}
                                         onChange={handleChange}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.firstName ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                                 </div>
 
                                 {/* Last Name */}
@@ -421,8 +617,9 @@ const PublicStudentRegistration = () => {
                                         value={formData.lastName}
                                         onChange={handleChange}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.lastName ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                                 </div>
 
                                 {/* Email */}
@@ -437,8 +634,9 @@ const PublicStudentRegistration = () => {
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                                 </div>
 
                                 {/* Mobile Number */}
@@ -465,9 +663,9 @@ const PublicStudentRegistration = () => {
                                             placeholder="Enter mobile number"
                                             value={formData.mobile}
                                             onChange={handleChange}
-                                            className="border border-gray-300 rounded-r-lg p-3 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
                                         />
                                     </div>
+                                    {errors.mobile && <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>}
                                 </div>
 
                                 {/* Father Name */}
@@ -507,11 +705,13 @@ const PublicStudentRegistration = () => {
                                     </label>
                                     <input
                                         type="date"
+                                        max="9999-12-31"
                                         name="dob"
                                         value={formData.dob}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.dob ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.dob && <p className="text-red-500 text-xs mt-1">{errors.dob}</p>}
                                 </div>
 
                                 {/* First Language */}
@@ -538,7 +738,7 @@ const PublicStudentRegistration = () => {
                                         name="nationality"
                                         value={formData.nationality}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.nationality ? 'border-red-500' : 'border-gray-300'}`}
                                     >
                                         <option value="">Select country</option>
                                         {countriesData.map((country) => (
@@ -571,11 +771,13 @@ const PublicStudentRegistration = () => {
                                     </label>
                                     <input
                                         type="date"
+                                        max="9999-12-31"
                                         name="passport_expiry"
                                         value={formData.passport_expiry}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.passport_expiry ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.passport_expiry && <p className="text-red-500 text-xs mt-1">{errors.passport_expiry}</p>}
                                 </div>
 
                                 {/* Marital Status */}
@@ -728,7 +930,7 @@ const PublicStudentRegistration = () => {
                                         name="education_country"
                                         value={formData.education_country}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.education_country ? 'border-red-500' : 'border-gray-300'}`}
                                     >
                                         <option value="">Select country</option>
                                         {countriesData.map((country) => (
@@ -737,6 +939,7 @@ const PublicStudentRegistration = () => {
                                             </option>
                                         ))}
                                     </select>
+                                    {errors.education_country && <p className="text-red-500 text-xs mt-1">{errors.education_country}</p>}
                                 </div>
 
                                 <div>
@@ -747,13 +950,14 @@ const PublicStudentRegistration = () => {
                                         name="highest_level"
                                         value={formData.highest_level}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.highest_level ? 'border-red-500' : 'border-gray-300'}`}
                                     >
                                         <option value="">Select level</option>
                                         <option>Under-Graduate</option>
                                         <option>Post-Graduate</option>
                                         <option>Diploma</option>
                                     </select>
+                                    {errors.highest_level && <p className="text-red-500 text-xs mt-1">{errors.highest_level}</p>}
                                 </div>
 
                                 <div>
@@ -764,13 +968,14 @@ const PublicStudentRegistration = () => {
                                         name="grading_scheme"
                                         value={formData.grading_scheme}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.grading_scheme ? 'border-red-500' : 'border-gray-300'}`}
                                     >
                                         <option value="">Select scheme</option>
                                         <option>Percentage</option>
                                         <option>CGPA</option>
                                         <option>GPA</option>
                                     </select>
+                                    {errors.grading_scheme && <p className="text-red-500 text-xs mt-1">{errors.grading_scheme}</p>}
                                 </div>
 
                                 <div>
@@ -783,8 +988,9 @@ const PublicStudentRegistration = () => {
                                         placeholder="e.g., 85%, 8.5 CGPA"
                                         value={formData.grade_average}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.grade_average ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.grade_average && <p className="text-red-500 text-xs mt-1">{errors.grade_average}</p>}
                                 </div>
                             </div>
                         </div>
@@ -809,7 +1015,7 @@ const PublicStudentRegistration = () => {
                                         name="exam_type"
                                         value={formData.exam_type}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.exam_type ? 'border-red-500' : 'border-gray-300'}`}
                                     >
                                         <option value="">Select exam</option>
                                         <option>IELTS</option>
@@ -817,6 +1023,7 @@ const PublicStudentRegistration = () => {
                                         <option>PTE</option>
                                         <option>Duolingo</option>
                                     </select>
+                                    {errors.exam_type && <p className="text-red-500 text-xs mt-1">{errors.exam_type}</p>}
                                 </div>
 
                                 <div className="col-span-3 md:col-span-2">
@@ -825,11 +1032,13 @@ const PublicStudentRegistration = () => {
                                     </label>
                                     <input
                                         type="date"
+                                        max="9999-12-31"
                                         name="exam_date"
                                         value={formData.exam_date}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.exam_date ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.exam_date && <p className="text-red-500 text-xs mt-1">{errors.exam_date}</p>}
                                 </div>
 
                                 <div>
@@ -842,8 +1051,9 @@ const PublicStudentRegistration = () => {
                                         placeholder="0.0"
                                         value={formData.listening_score}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.listening_score ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.listening_score && <p className="text-red-500 text-xs mt-1">{errors.listening_score}</p>}
                                 </div>
 
                                 <div>
@@ -856,8 +1066,9 @@ const PublicStudentRegistration = () => {
                                         placeholder="0.0"
                                         value={formData.reading_score}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.reading_score ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.reading_score && <p className="text-red-500 text-xs mt-1">{errors.reading_score}</p>}
                                 </div>
 
                                 <div>
@@ -870,8 +1081,9 @@ const PublicStudentRegistration = () => {
                                         placeholder="0.0"
                                         value={formData.writing_score}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.writing_score ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.writing_score && <p className="text-red-500 text-xs mt-1">{errors.writing_score}</p>}
                                 </div>
 
                                 <div>
@@ -884,8 +1096,9 @@ const PublicStudentRegistration = () => {
                                         placeholder="0.0"
                                         value={formData.speaking_score}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.speaking_score ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.speaking_score && <p className="text-red-500 text-xs mt-1">{errors.speaking_score}</p>}
                                 </div>
 
                                 <div className="col-span-3 md:col-span-2">
@@ -898,8 +1111,9 @@ const PublicStudentRegistration = () => {
                                         placeholder="0.0"
                                         value={formData.overall_score}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.overall_score ? 'border-red-500' : 'border-gray-300'}`}
                                     />
+                                    {errors.overall_score && <p className="text-red-500 text-xs mt-1">{errors.overall_score}</p>}
                                 </div>
                             </div>
                         </div>
@@ -924,12 +1138,13 @@ const PublicStudentRegistration = () => {
                                         name="visa_refusal"
                                         value={formData.visa_refusal}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.visa_refusal ? 'border-red-500' : 'border-gray-300'}`}
                                     >
                                         <option value="">Select</option>
                                         <option value="YES">Yes</option>
                                         <option value="NO">No</option>
                                     </select>
+                                    {errors.visa_refusal && <p className="text-red-500 text-xs mt-1">{errors.visa_refusal}</p>}
                                 </div>
 
                                 <div>
@@ -940,12 +1155,13 @@ const PublicStudentRegistration = () => {
                                         name="study_permit"
                                         value={formData.study_permit}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.study_permit ? 'border-red-500' : 'border-gray-300'}`}
                                     >
                                         <option value="">Select</option>
                                         <option value="YES">Yes</option>
                                         <option value="NO">No</option>
                                     </select>
+                                    {errors.study_permit && <p className="text-red-500 text-xs mt-1">{errors.study_permit}</p>}
                                 </div>
 
                                 <div>
@@ -965,48 +1181,191 @@ const PublicStudentRegistration = () => {
                         </div>
                     )}
 
+                    {/* Step 5: Documents */}
+                    {currentStep === 5 && (
+                        <div ref={documentsRef}>
+                            <div className="mb-6">
+                                <h3 className="text-2xl font-semibold text-indigo-700 flex items-center gap-2">
+                                    <UploadCloud size={28} />
+                                    Documents Upload
+                                </h3>
+                                <p className="text-gray-500 text-sm mt-1">Upload required documents and ID proof</p>
+                            </div>
+
+                            {/* ID Details Section */}
+                            <div className="bg-indigo-50 rounded-xl p-6 mb-8 border border-indigo-100">
+                                <h4 className="text-lg font-semibold text-indigo-900 mb-4">Identity Proof Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            ID Proof Type <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            name="identity_type"
+                                            value={formData.identity_type}
+                                            onChange={handleChange}
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white ${errors.identity_type ? 'border-red-500' : 'border-gray-300'}`}
+                                        >
+                                            <option value="">Select ID Type</option>
+                                            <option value="Aadhaar">Aadhaar Card</option>
+                                            <option value="PAN">PAN Card</option>
+                                            <option value="Passport">Passport</option>
+                                            <option value="Driving License">Driving License</option>
+                                        </select>
+                                        {errors.identity_type && <p className="text-red-500 text-xs mt-1">{errors.identity_type}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            ID Number <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="identity_number"
+                                            placeholder="Enter ID number"
+                                            value={formData.identity_number}
+                                            onChange={handleChange}
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.identity_number ? 'border-red-500' : 'border-gray-300'}`}
+                                        />
+                                        {errors.identity_number && <p className="text-red-500 text-xs mt-1">{errors.identity_number}</p>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Student Photo */}
+                                <DocumentUpload
+                                    label="Student Photo"
+                                    documentType="photo"
+                                    description="Recent passport size photograph (JPG/PNG)"
+                                    tempId={getTempStudentId()}
+                                    currentUrl={getDocumentUrl('photo')}
+                                    onFileSelect={(file) => handleFileSelection('photo', file)}
+                                    autoUpload={false}
+                                    acceptedTypes="image/*"
+                                    required={true}
+                                />
+
+                                {/* ID Proof Upload */}
+                                <DocumentUpload
+                                    label="Identity Proof"
+                                    documentType="identity_proof"
+                                    description="Scanned copy of the selected ID proof"
+                                    tempId={getTempStudentId()}
+                                    currentUrl={getDocumentUrl('identity_proof')}
+                                    onFileSelect={(file) => handleFileSelection('identity_proof', file)}
+                                    autoUpload={false}
+                                    acceptedTypes="image/*,.pdf"
+                                    required={true}
+                                />
+
+                                {/* 10th Marksheet */}
+                                <DocumentUpload
+                                    label="10th Marksheet"
+                                    documentType="marksheet_10"
+                                    description="Class 10th marksheet or certificate"
+                                    tempId={getTempStudentId()}
+                                    currentUrl={getDocumentUrl('marksheet_10')}
+                                    onFileSelect={(file) => handleFileSelection('marksheet_10', file)}
+                                    autoUpload={false}
+                                    acceptedTypes="image/*,.pdf"
+                                    required={true}
+                                />
+
+                                {/* 12th Marksheet */}
+                                <DocumentUpload
+                                    label="12th Marksheet"
+                                    documentType="marksheet_12"
+                                    description="Class 12th marksheet or certificate"
+                                    tempId={getTempStudentId()}
+                                    currentUrl={getDocumentUrl('marksheet_12')}
+                                    onFileSelect={(file) => handleFileSelection('marksheet_12', file)}
+                                    autoUpload={false}
+                                    acceptedTypes="image/*,.pdf"
+                                    required={true}
+                                />
+
+                                {/* Resume/CV */}
+                                <DocumentUpload
+                                    label="Resume / CV"
+                                    documentType="resume"
+                                    description="Updated resume in PDF format only"
+                                    tempId={getTempStudentId()}
+                                    currentUrl={getDocumentUrl('resume')}
+                                    onFileSelect={(file) => handleFileSelection('resume', file)}
+                                    autoUpload={false}
+                                    acceptedTypes=".pdf"
+                                    required={true}
+                                />
+
+                                {/* Degree Certificate (Optional) */}
+                                <DocumentUpload
+                                    label="Degree Certificate"
+                                    documentType="degree_certificate"
+                                    description="Bachelor's/Master's certificate (PDF only)"
+                                    tempId={getTempStudentId()}
+                                    currentUrl={getDocumentUrl('degree_certificate')}
+                                    onFileSelect={(file) => handleFileSelection('degree_certificate', file)}
+                                    autoUpload={false}
+                                    acceptedTypes=".pdf"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+
                     {/* Navigation Buttons */}
-                    <div className="flex justify-between mt-8 pt-6 border-t">
+                    <div className="flex justify-between mt-8 pt-6 border-t border-gray-100">
                         <button
                             onClick={handlePrevious}
-                            disabled={currentStep === 1}
-                            className={`px-6 py-3 rounded-lg font-medium transition-all ${currentStep === 1
-                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                            disabled={currentStep === 1 || loading}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${currentStep === 1
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
-                            <ArrowLeft size={18} className="inline mr-2" />
+                            <ArrowLeft size={20} />
                             Previous
                         </button>
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-4">
                             <button
                                 onClick={handleSaveStep}
-                                disabled={loading || (currentStep === 1 && !emailVerified)}
-                                className="px-6 py-3 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={loading}
+                                className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-all border border-indigo-200"
                             >
-                                <Save size={18} />
-                                {loading ? 'Saving...' : 'Save Progress'}
+                                <Save size={20} />
+                                Save Draft
                             </button>
 
-                            {currentStep < 4 ? (
-                                <button
-                                    onClick={handleNext}
-                                    disabled={loading || (currentStep === 1 && !emailVerified)}
-                                    className="px-6 py-3 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title={currentStep === 1 && !emailVerified ? 'Please verify your email to continue' : ''}
-                                >
-                                    Save & Next
-                                    <ArrowRight size={18} />
-                                </button>
-                            ) : (
+                            {currentStep === 5 ? (
                                 <button
                                     onClick={handleFinalSubmit}
                                     disabled={loading}
-                                    className="px-6 py-3 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg disabled:opacity-50"
+                                    className="flex items-center gap-2 px-8 py-3 rounded-xl font-medium text-white bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200 transition-all transform hover:-translate-y-0.5"
                                 >
-                                    <Check size={18} />
-                                    {loading ? 'Submitting...' : 'Complete Registration'}
+                                    {loading ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            Complete Registration
+                                            <Check size={20} />
+                                        </>
+                                    )}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleNext}
+                                    disabled={loading}
+                                    className="flex items-center gap-2 px-8 py-3 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5"
+                                >
+                                    {loading ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            Next Step
+                                            <ArrowRight size={20} />
+                                        </>
+                                    )}
                                 </button>
                             )}
                         </div>

@@ -152,7 +152,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         return [
           { path: "/dashboard", icon: FiHome, label: "Dashboard" },
           { path: "/my-applications", icon: FiFileText, label: "Applied Colleges" },
-          { onClick: () => { }, icon: FiHeart, label: "Shortlisted Colleges" },
+          // { onClick: () => { }, icon: FiHeart, label: "Shortlisted Colleges" },
           { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
           { icon: FiLogOut, label: "Logout", onClick: handleLogoutConfirm },
