@@ -565,11 +565,11 @@ const ProgramSelectionFlow = () => {
                                                             step === 4 ? 'Discipline' : 'Focus Area'
                                             }
                                             isActive={
-                                                (step === 1 && selections.country?.id === item.id) ||
-                                                (step === 2 && selections.university?.id === item.id) ||
+                                                (step === 1 && selections.country && ((selections.country.id && selections.country.id === item.id) || (selections.country.website && selections.country.website === item.website) || selections.country.name === item.name)) ||
+                                                (step === 2 && selections.university && ((selections.university.id && selections.university.id === item.id) || (selections.university.website && selections.university.website === item.website) || selections.university.name === item.name)) ||
                                                 (step === 3 && selections.level === (item.value || item.name)) ||
-                                                (step === 4 && selections.category?.id === item.id) ||
-                                                (step === 5 && selections.specialization?.id === item.id)
+                                                (step === 4 && selections.category && selections.category.id === item.id) ||
+                                                (step === 5 && selections.specialization && selections.specialization.id === item.id)
                                             }
                                             onClick={() => {
                                                 const key = step === 1 ? 'country' :
