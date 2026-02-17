@@ -9,8 +9,9 @@ import StudentDocumentUpload from '../../components/students/StudentDocumentUplo
 import ProgramDetailsModal from '../../components/students/ProgramDetailsModal';
 import { AlertCircle, Shield, ExternalLink, Download, Trash2, Loader2, Save, CheckCircle2 as CheckCircle } from 'lucide-react';
 
-const StudentDetails = () => {
-  const { id } = useParams();
+const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
+  const { id: paramId } = useParams();
+  const id = explicitId || paramId;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);
@@ -246,23 +247,24 @@ const StudentDetails = () => {
 
   return (
     <>
-      {/* Header Section with Back Button */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/students')}
-            className="flex items-center gap-2 group text-gray-600 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
-          >
-            <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-            Back to Student List
-          </button>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider">
-              Active Profile
-            </span>
+      {!explicitId && (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate('/students')}
+              className="flex items-center gap-2 group text-gray-600 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
+            >
+              <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+              Back to Student List
+            </button>
+            <div className="flex gap-2">
+              <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider">
+                Active Profile
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {/* Top Section - Navigation Pills (Outside max-w container for proper sticky) */}
       <div className="sticky top-[64px] z-40 bg-gray-50/95 backdrop-blur-md py-4 transition-all border-b border-gray-200 shadow-sm w-full px-4 md:px-8">
         <div className="flex flex-nowrap gap-4 md:justify-center justify-start overflow-x-auto pb-2 no-scrollbar w-full">
@@ -354,7 +356,7 @@ const StudentDetails = () => {
                   </h2>
                   <p className="text-gray-500 text-sm overflow-hidden text-ellipsis whitespace-nowrap">{studentData.email}</p>
                   <div className="mt-4 inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
-                    Portal Student
+                    {explicitId ? 'My Student Profile' : 'Portal Student'}
                   </div>
                 </div>
 
@@ -403,14 +405,16 @@ const StudentDetails = () => {
                   </div>
                 </div>
 
-                <div className="mt-8">
-                  <button
-                    onClick={() => navigate('/students')}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-semibold"
-                  >
-                    <Home className="w-4 h-4" /> Back to Students
-                  </button>
-                </div>
+                {!explicitId && (
+                  <div className="mt-8">
+                    <button
+                      onClick={() => navigate('/students')}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-semibold"
+                    >
+                      <Home className="w-4 h-4" /> Back to Students
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -722,7 +726,7 @@ const StudentDetails = () => {
                   <StudentDocumentUpload
                     student={{ ...studentData, id, _id: id }}
                     onUploadSuccess={fetchStudentData}
-                    isAdmin={isAdmin}
+                    isAdmin={isAdmin && !forceReadOnly}
                   />
                 </div>
               </div>
@@ -780,12 +784,14 @@ const StudentDetails = () => {
                     <div className="text-center py-12 text-gray-400 italic bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100">
                       <CheckCircle2 className="mx-auto w-12 h-12 mb-3 opacity-10" />
                       <p className="font-bold text-gray-500">No applications found for this student.</p>
-                      <button
-                        onClick={() => navigate(`/program-selection/${id}`)}
-                        className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
-                      >
-                        Apply Now
-                      </button>
+                      {!forceReadOnly && (
+                        <button
+                          onClick={() => navigate(`/program-selection/${id}`)}
+                          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                        >
+                          Apply Now
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
