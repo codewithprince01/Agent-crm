@@ -45,6 +45,7 @@ import Settings from './pages/admin/Settings';
 import PendingAgents from "./pages/agents/PendingAgents";
 import AdminCreateAgent from "./pages/agents/AdminCreateAgent";
 import AdminEditAgent from "./pages/agents/AdminEditAgent";
+import AgentBrochures from "./pages/agent/AgentBrochures";
 
 // University Pages
 import UniversityList from "./pages/universities/UniversityList";
@@ -593,7 +594,7 @@ function AppContent() {
           }
         />
 
-// Profile & Settings
+        {/* Profile & Settings */}
         <Route path="profile" element={
           <ProtectedRoute>
             <RoleBasedProfile />
@@ -612,6 +613,16 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        {/* Agent Specific Routes */}
+        <Route
+          path="agent/brochures"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.AGENT]}>
+              <AgentBrochures />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Student Specific Routes */}
         <Route
           path="my-applications"

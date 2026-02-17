@@ -61,7 +61,8 @@ const BrochureDetail = () => {
             const filtered = brochures.filter(
                 (brochure) =>
                     getCategoryName(brochure.category_id)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    brochure.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (brochure.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (brochure.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                     brochure.date?.includes(searchTerm)
             );
             setFilteredData(filtered);

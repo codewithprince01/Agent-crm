@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { brochureService } from '../../services/brochureService';
-import { FiEdit2, FiPlus, FiSearch, FiTrash2, FiCheck, FiX } from 'react-icons/fi';
+import { FiEdit2, FiPlus, FiSearch, FiTrash2, FiCheck, FiX, FiUsers } from 'react-icons/fi';
 import { useToast } from '../../components/ui/toast';
+import apiClient from '../../services/apiClient';
+import AgentAssignmentModal from './components/AgentAssignmentModal';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -30,6 +33,13 @@ const UniversityPrograms = () => {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [doubleConfirm, setDoubleConfirm] = useState(false);
 
+    // Assignment state
+    const { user } = useSelector((state) => state.auth);
+    const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+    const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+    const [assignmentStats, setAssignmentStats] = useState({});
+    const [fetchingStats, setFetchingStats] = useState(false);
+
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -52,8 +62,9 @@ const UniversityPrograms = () => {
         if (!hasFetchedRef.current) {
             hasFetchedRef.current = true;
             fetchInitialData();
+            if (isAdmin) fetchAssignmentStats();
         }
-    }, [typeIdFromUrl]);
+    }, [typeIdFromUrl, isAdmin]);
 
     useEffect(() => {
         // Filter data based on search query
@@ -136,6 +147,25 @@ const UniversityPrograms = () => {
         }
     };
 
+
+    const fetchAssignmentStats = async () => {
+        setFetchingStats(true);
+        try {
+            const response = await apiClient.get('/agent-university/stats/assignment-counts');
+            const stats = {};
+            (response.data.data || []).forEach(item => {
+                stats[item._id] = {
+                    count: item.count,
+                    agentIds: item.agents
+                };
+            });
+            setAssignmentStats(stats);
+        } catch (error) {
+            console.error('Error fetching assignment stats:', error);
+        } finally {
+            setFetchingStats(false);
+        }
+    };
 
     const handleFormChange = (e) => {
         setFormData({
@@ -411,11 +441,8 @@ const UniversityPrograms = () => {
 
             {/* DataTable */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                     <h2 className="text-lg font-semibold text-gray-800">Record List</h2>
-                </div>
-
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                     <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-700">Show</span>
                         <select
@@ -424,7 +451,7 @@ const UniversityPrograms = () => {
                                 setEntriesPerPage(Number(e.target.value));
                                 setCurrentPage(1);
                             }}
-                            className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value={10}>10</option>
                             <option value={25}>25</option>
@@ -434,6 +461,36 @@ const UniversityPrograms = () => {
                         <span className="text-sm text-gray-700">entries</span>
                     </div>
                 </div>
+
+                {/* Bulk Actions Bar */}
+                {isAdmin && selectedIds.length > 0 && (
+                    <div className="mx-4 my-4 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                                {selectedIds.length}
+                            </div>
+                            <div>
+                                <h4 className="text-blue-900 font-bold text-sm">Universities Selected</h4>
+                                <p className="text-blue-700 text-xs">Ready for bulk assignment to agents.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setSelectedIds([])}
+                                className="px-4 py-2 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+                            >
+                                Clear Selection
+                            </button>
+                            <button
+                                onClick={() => setAssignmentModalOpen(true)}
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-blue-200 transition-all active:scale-95 cursor-pointer"
+                            >
+                                <FiUsers />
+                                Assign Agents
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Table */}
                 {currentEntries.length > 0 ? (
@@ -446,7 +503,7 @@ const UniversityPrograms = () => {
                                             type="checkbox"
                                             checked={selectedIds.length === currentEntries.length && currentEntries.length > 0}
                                             onChange={toggleSelectAll}
-                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                         />
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -464,6 +521,11 @@ const UniversityPrograms = () => {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Brochure Count
                                     </th>
+                                    {isAdmin && (
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Assigned Agents
+                                        </th>
+                                    )}
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Action
                                     </th>
@@ -477,7 +539,7 @@ const UniversityPrograms = () => {
                                                 type="checkbox"
                                                 checked={selectedIds.includes(up._id || up.id)}
                                                 onChange={() => toggleSelect(up._id || up.id)}
-                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                             />
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -491,7 +553,7 @@ const UniversityPrograms = () => {
                                                 <select
                                                     value={editData[up._id || up.id]?.country || ''}
                                                     onChange={(e) => handleEditChange(up._id || up.id, 'country', e.target.value)}
-                                                    className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer"
                                                 >
                                                     {(countryOptions || []).map(country => (
                                                         <option key={country.code || country.name} value={country.name}>{country.name}</option>
@@ -507,13 +569,13 @@ const UniversityPrograms = () => {
                                                     type="text"
                                                     value={editData[up._id || up.id]?.name || ''}
                                                     onChange={(e) => handleEditChange(up._id || up.id, 'name', e.target.value)}
-                                                    className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full cursor-pointer"
+                                                    className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
                                                 />
                                             ) : (
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         onClick={() => navigateToBrochures(up._id || up.id)}
-                                                        className="text-blue-600 hover:text-blue-900 cursor-pointer"
+                                                        className="text-blue-600 hover:text-blue-900 cursor-pointer font-medium"
                                                     >
                                                         {up.name}
                                                     </button>
@@ -523,6 +585,21 @@ const UniversityPrograms = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {up.brochureCount || 0}
                                         </td>
+                                        {isAdmin && (
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedIds([up._id || up.id]);
+                                                        setAssignmentModalOpen(true);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-all border border-blue-100 hover:border-blue-200 shadow-sm active:scale-95 group cursor-pointer"
+                                                    title={`Manage agent assignments for ${up.name}`}
+                                                >
+                                                    <FiUsers size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                                    {assignmentStats[up._id]?.count || 0} Agents
+                                                </button>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex space-x-3">
                                                 {editingId === (up._id || up.id) ? (
@@ -575,8 +652,8 @@ const UniversityPrograms = () => {
                         </table>
                     </div>
                 ) : (
-                    <div className="p-12 text-center">
-                        <p className="text-gray-500">No university/programs found</p>
+                    <div className="p-12 text-center text-gray-500">
+                        No university/programs found
                     </div>
                 )}
 
@@ -603,9 +680,9 @@ const UniversityPrograms = () => {
                                 key={page}
                                 onClick={() => handlePageChange(page)}
                                 className={`px-3 py-1 border rounded text-sm ${currentPage === page
-                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    ? 'bg-blue-600 text-white border-blue-600 font-bold'
                                     : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                                    }`}
+                                    } cursor-pointer`}
                             >
                                 {page}
                             </button>
@@ -635,7 +712,7 @@ const UniversityPrograms = () => {
                     }
                 }}
             >
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl">
                     {!doubleConfirm ? (
                         <>
                             <AlertDialogHeader>
@@ -646,10 +723,10 @@ const UniversityPrograms = () => {
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
                                 <button
                                     onClick={handleDelete}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm font-medium transition-colors"
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm font-medium transition-colors cursor-pointer"
                                 >
                                     Delete
                                 </button>
@@ -667,10 +744,10 @@ const UniversityPrograms = () => {
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                     onClick={handleFinalDelete}
-                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-500 font-medium"
+                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-500 font-medium rounded-lg"
                                 >
                                     Yes, Delete All
                                 </AlertDialogAction>
@@ -679,6 +756,17 @@ const UniversityPrograms = () => {
                     )}
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Agent Assignment Modal */}
+            <AgentAssignmentModal
+                open={assignmentModalOpen}
+                onOpenChange={setAssignmentModalOpen}
+                selectedUniversityIds={selectedIds}
+                onAssignmentComplete={() => {
+                    fetchAssignmentStats();
+                    setSelectedIds([]);
+                }}
+            />
         </div>
     );
 };
