@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { brochureService } from '../../services/brochureService';
 import { FiEdit2, FiSearch, FiTrash2, FiCheck, FiX } from 'react-icons/fi';
+import PageHeader from '../../components/layout/PageHeader';
 import { useToast } from '../../components/ui/toast';
 import {
     AlertDialog,
@@ -175,6 +176,12 @@ const BrochureCategories = () => {
     return (
         <div className="p-6">
             {/* Header */}
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Brochure Categories' }
+                ]}
+            />
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Brochure Category</h1>
             </div>

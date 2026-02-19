@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { selectSettings } from "../../store/slices/settingsSlice";
 import {
   FiHome,
   FiUsers,
@@ -41,10 +42,27 @@ const styles = {
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useSelector((state) => state.auth);
+  const settings = useSelector(selectSettings);
+  const logoLight = settings?.logo_light;
   const dispatch = useDispatch();
   const location = useLocation();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState({});
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    const activeDropdowns = {};
+    menuItems.forEach((item) => {
+      if (item.subItems && (isSubItemActive(item.subItems) || (item.activePrefixes && item.activePrefixes.some(p => location.pathname.startsWith(p))))) {
+        activeDropdowns[item.label] = true;
+      }
+    });
+
+    setOpenDropdowns((prev) => ({
+      ...prev,
+      ...activeDropdowns,
+    }));
+  }, [location.pathname]);
 
   const toggleDropdown = (label) => {
     setOpenDropdowns((prev) => ({
@@ -77,16 +95,18 @@ const Sidebar = ({ isOpen, onClose }) => {
           {
             label: "Agents Management",
             icon: FiUsers,
+            activePrefixes: ["/agents", "/agent-application"],
             subItems: [
               { path: "/agents", label: "All Agents" },
               { path: "/agent-application", label: "Agent Applications" },
             ],
           },
-          { path: "/students", icon: FiUserCheck, label: "Students List" },
           {
-            label: "Student Applications",
-            icon: FiFileText,
+            label: "Students",
+            icon: FiUserCheck,
+            activePrefixes: ["/applied-students", "/pending-applications"],
             subItems: [
+              { path: "/students", label: "Students List" },
               { path: "/applied-students", label: "Applied Students" },
               { path: "/pending-applications", label: "Pending Applications" },
             ],
@@ -94,6 +114,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           {
             label: "Brochure Management",
             icon: FiFileText,
+            activePrefixes: ["/brochure"],
             subItems: [
               { path: "/brochure/types", label: "Brochure Types" },
               { path: "/brochure/categories", label: "Brochure Category" },
@@ -102,8 +123,8 @@ const Sidebar = ({ isOpen, onClose }) => {
           },
           { path: "/commissions", icon: FiDollarSign, label: "Commissions" },
           { path: "/payouts", icon: FiTrendingUp, label: "Payouts" },
-          { path: "/staff", icon: FiUsers, label: "Staff Management" },
-          { path: "/roles-permissions", icon: FiShield, label: "Roles & Permissions" },
+          // { path: "/staff", icon: FiUsers, label: "Staff Management" },
+          // { path: "/roles-permissions", icon: FiShield, label: "Roles & Permissions" },
           { path: "/audit-logs", icon: FiShield, label: "Audit Logs" },
           { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
@@ -117,16 +138,18 @@ const Sidebar = ({ isOpen, onClose }) => {
           {
             label: "Agents Management",
             icon: FiUsers,
+            activePrefixes: ["/agents", "/agent-application"],
             subItems: [
               { path: "/agents", label: "All Agents" },
               { path: "/agent-application", label: "Agent Applications" },
             ],
           },
-          { path: "/students", icon: FiUserCheck, label: "Students List" },
           {
             label: "Student Applications",
-            icon: FiFileText,
+            icon: FiUserCheck,
+            activePrefixes: ["/applied-students", "/pending-applications"],
             subItems: [
+              { path: "/students", label: "Students List" },
               { path: "/applied-students", label: "Applied Students" },
               { path: "/pending-applications", label: "Pending Applications" },
             ],
@@ -134,6 +157,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           {
             label: "Brochure Management",
             icon: FiFileText,
+            activePrefixes: ["/brochure"],
             subItems: [
               { path: "/brochure/types", label: "Brochure Types" },
               { path: "/brochure/categories", label: "Brochure Category" },
@@ -154,6 +178,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           {
             label: "Student Applications",
             icon: FiFileText,
+            activePrefixes: ["/applied-students", "/pending-applications"],
             subItems: [
               { path: "/applied-students", label: "Applied Students" },
               { path: "/pending-applications", label: "Pending Applications" },
@@ -161,6 +186,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           },
           { path: "/earnings", icon: FiDollarSign, label: "Earnings" },
           { path: "/payouts", icon: FiTrendingUp, label: "Payouts" },
+          { path: "/agent/brochures", icon: FiBookOpen, label: "Brochure Details" },
           { path: "/profile", icon: FiUserCheck, label: "Profile" },
           { path: "/change-password", icon: FiLock, label: "Change Password" },
           { icon: FiLogOut, label: "Logout", onClick: handleLogoutConfirm },
@@ -184,7 +210,10 @@ const Sidebar = ({ isOpen, onClose }) => {
   const menuItems = getMenuItems();
 
   const isSubItemActive = (subItems) => {
-    return subItems.some((subItem) => location.pathname === subItem.path);
+    return subItems.some((subItem) =>
+      location.pathname === subItem.path ||
+      (subItem.path !== '/' && location.pathname.startsWith(subItem.path))
+    );
   };
 
   return (
@@ -208,14 +237,23 @@ const Sidebar = ({ isOpen, onClose }) => {
       >
         {/* Logo */}
         <div className="h-20 flex items-center px-8 border-b border-primary-500/50 shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-black/10">
-              <span className="text-primary-600 font-black text-xl">U</span>
+          {logoLight && !logoError ? (
+            <img
+              src={logoLight}
+              alt="Logo"
+              className="max-h-12 w-auto object-contain"
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-black/10">
+                <span className="text-primary-600 font-black text-xl">U</span>
+              </div>
+              <h1 style={styles["#custom-h1-class"]} className="text-xl font-black tracking-tight text-white uppercase">
+                UniAdmit
+              </h1>
             </div>
-            <h1 style={styles["#custom-h1-class"]} className="text-xl font-black tracking-tight text-white uppercase">
-              UniAdmit
-            </h1>
-          </div>
+          )}
         </div>
 
         {/* Navigation - Fixed height with scroll */}
@@ -229,9 +267,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                       onClick={() => toggleDropdown(item.label)}
                       className={`
                         w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200
-                        ${isSubItemActive(item.subItems) || openDropdowns[item.label]
+                        ${(isSubItemActive(item.subItems) || (item.activePrefixes && item.activePrefixes.some(p => location.pathname.startsWith(p))))
                           ? "bg-primary-500 text-white font-semibold"
-                          : "text-primary-100 hover:bg-primary-500/50 hover:text-white"
+                          : openDropdowns[item.label]
+                            ? "bg-primary-500/50 text-white font-medium"
+                            : "text-primary-100 hover:bg-primary-500/50 hover:text-white"
                         }
                       `}
                     >
@@ -252,7 +292,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             <NavLink
                               to={subItem.path}
                               className={({ isActive }) =>
-                                `block px-4 py-2 text-sm rounded-lg transition-all duration-200 ${isActive
+                                `block px-4 py-2 text-sm rounded-lg transition-all duration-200 ${isActive || (subItem.path !== '/' && location.pathname.startsWith(subItem.path))
                                   ? "bg-white/10 text-white font-bold"
                                   : "text-primary-100 hover:text-white hover:bg-white/5"
                                 }`

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import userService from '../../services/userService';
+import { useNavigate, Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import PageHeader from '../../components/layout/PageHeader';
 import { ROLES } from '../../utils/constants';
 import {
     AlertDialog,
@@ -21,6 +24,7 @@ import {
 import { useToast } from '../../components/ui/toast';
 
 const AdminList = () => {
+    const navigate = useNavigate();
     const { success, error: showError } = useToast();
     const [admins, setAdmins] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -185,13 +189,25 @@ const AdminList = () => {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Admins</h1>
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Admins List' }
+                ]}
+            />
+
+            {/* Title & Action Row */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
+                <div>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Admin Management</h1>
+                    <p className="text-gray-500 text-sm font-medium mt-1">Manage and monitor administrative access.</p>
+                </div>
                 <button
                     onClick={openAddModal}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
+                    className="flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-[0.98] group w-full sm:w-auto"
                 >
-                    Add New Admin
+                    <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                    <span>Add New Admin</span>
                 </button>
             </div>
 

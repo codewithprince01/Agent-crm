@@ -159,8 +159,8 @@ const agentSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  toJSON: { virtuals: true, getters: true },
-  toObject: { virtuals: true, getters: true }
+  toJSON: { flattenMaps: true, virtuals: true, getters: true },
+  toObject: { flattenMaps: true, virtuals: true, getters: true }
 });
 
 // Indexes (email is already indexed via unique: true)

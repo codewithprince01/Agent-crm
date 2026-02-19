@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, CheckCircle, XCircle, Search, Filter } from 'lucide-react';
+import PageHeader from '../../components/layout/PageHeader';
 import agentService from '../../services/agentService';
 import {
   AlertDialog,
@@ -83,6 +84,14 @@ const ApplicationList = () => {
 
   return (
     <div className="p-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Dashboard', link: '/dashboard' },
+          { label: 'Agents', link: '/agents' },
+          { label: 'Agent Applications' }
+        ]}
+      />
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Partner Applications</h1>
         <p className="text-gray-600 mt-1">Manage incoming partnership requests from agents</p>

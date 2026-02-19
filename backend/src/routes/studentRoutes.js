@@ -7,31 +7,6 @@ const { body } = require('express-validator');
 const multer = require('multer');
 const path = require('path');
 
-// Multer configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'upload/student/documents/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|jpg|jpeg|png/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
-      return cb(null, true);
-    }
-    cb(new Error('Only PDF, JPG, JPEG, PNG files are allowed'));
-  },
-});
-
 const validateRequest = (req, res, next) => {
   const { validationResult } = require('express-validator');
   const errors = validationResult(req);
@@ -41,6 +16,8 @@ const validateRequest = (req, res, next) => {
   next();
 };
 
+const documentUpload = require('../middlewares/documentUploadMiddleware');
+
 router.get('/', authMiddleware, StudentController.getAllStudents);
 
 // Get current student's own profile (must be before /:id route)
@@ -48,23 +25,6 @@ router.get('/me', authMiddleware, StudentController.getMyProfile);
 
 // Update current student's own profile
 router.put('/me', authMiddleware, StudentController.updateMyProfile);
-
-// Upload current student's own document
-router.post(
-  '/me/documents',
-  authMiddleware,
-  upload.single('document'),
-  [body('document_type').trim().notEmpty().withMessage('Document type is required')],
-  validateRequest,
-  StudentController.uploadMyDocument
-);
-
-// Delete current student's own document
-router.delete(
-  '/me/documents/:documentId',
-  authMiddleware,
-  StudentController.deleteMyDocument
-);
 
 router.get('/:id', authMiddleware, StudentController.getStudentById);
 
@@ -85,20 +45,52 @@ router.put('/:id', authMiddleware, StudentController.updateStudent);
 
 router.delete('/:id', authMiddleware, StudentController.deleteStudent);
 
+// --- Student Document Management (Parity with Agents) ---
+
+// Self-service (Student role)
+router.post(
+  '/me/documents',
+  authMiddleware,
+  documentUpload.single('file'),
+  StudentController.uploadMyDocument
+);
+
+router.delete(
+  '/me/documents/:documentName',
+  authMiddleware,
+  StudentController.deleteMyDocument
+);
+
+// Admin/Staff/Agent service
 router.post(
   '/:id/documents',
   authMiddleware,
-  upload.single('document'),
-  [body('document_type').trim().notEmpty().withMessage('Document type is required')],
-  validateRequest,
+  documentUpload.single('file'),
   StudentController.uploadDocument
 );
 
 router.delete(
-  '/:id/documents/:documentId',
+  '/:id/documents/:documentName',
   authMiddleware,
-  // potentially add role check here if needed, butauthMiddleware might handle basic user context
   StudentController.deleteDocument
+);
+
+// Bulk upload
+const docFields = [
+  { name: 'photo', maxCount: 1 },
+  { name: 'idProof', maxCount: 1 },
+  { name: 'marksheet_10', maxCount: 1 },
+  { name: 'marksheet_12', maxCount: 1 },
+  { name: 'resume', maxCount: 1 },
+  { name: 'degreeCertificate', maxCount: 1 },
+  { name: 'identity_proof', maxCount: 1 },
+];
+
+router.post(
+  '/:id/documents/bulk',
+  authMiddleware,
+  documentUpload.fields(docFields),
+  StudentController.uploadBulkDocuments
 );
 
 module.exports = router;

@@ -1,5 +1,5 @@
 const { Agent, User, Student, Application } = require('../models');
-const { moveFileToAgentFolder } = require('../services/storageService');
+const { moveFileToEntityFolder } = require('../services/storageService');
 const ResponseHandler = require('../utils/responseHandler');
 const AuditService = require('../services/auditService');
 const emailService = require('../services/emailService');
@@ -638,7 +638,7 @@ class AgentController {
       }
 
       // Use storage service to move file
-      const relativePath = moveFileToAgentFolder(file, agent, documentName);
+      const relativePath = moveFileToEntityFolder(file, agent, documentName, 'agents');
 
       // Update the map
       if (!agent.documents) {

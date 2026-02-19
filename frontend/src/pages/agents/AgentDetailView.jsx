@@ -154,6 +154,14 @@ const AgentDetailView = () => {
 
     const [missingDocs, setMissingDocs] = useState([]);
 
+    // Construct backend URL helper
+    const getFullUrl = (url) => {
+        if (!url || typeof url !== 'string') return '';
+        if (url.startsWith('http')) return url;
+        const backendUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+        return `${backendUrl}/${url}`;
+    };
+
     useEffect(() => {
         if (agent) {
             const requiredDocs = ['idProof', 'companyLicence', 'agentPhoto', 'companyPhoto', 'identityDocument', 'companyRegistration', 'resume'];
@@ -281,8 +289,33 @@ const AgentDetailView = () => {
                             <div className="px-6 pb-8 relative text-center">
                                 <div className="flex justify-center -mt-16 mb-4">
                                     <div className="p-1.5 bg-white rounded-full shadow-md">
-                                        <div className="w-28 h-28 bg-blue-50 rounded-full flex items-center justify-center border-4 border-white overflow-hidden text-blue-500">
-                                            <UserCircle2 className="w-16 h-16" />
+                                        <div className="w-28 h-28 bg-blue-50 rounded-full flex items-center justify-center border-4 border-white overflow-hidden text-blue-500 relative">
+                                            {(() => {
+                                                const docs = agent.documents || {};
+                                                // Find any key that includes 'photo'
+                                                const photoKey = Object.keys(docs).find(k => k.toLowerCase().includes('photo') && docs[k]);
+                                                const url = photoKey ? docs[photoKey] : null;
+
+                                                if (url) {
+                                                    return (
+                                                        <img
+                                                            src={getFullUrl(url)}
+                                                            alt="Profile"
+                                                            crossOrigin="anonymous"
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                                e.target.nextSibling.style.display = 'flex';
+                                                            }}
+                                                        />
+                                                    );
+                                                }
+                                                return <UserCircle2 className="w-16 h-16" />;
+                                            })()}
+                                            {/* Fallback for image errors */}
+                                            <div className="hidden absolute inset-0 items-center justify-center bg-blue-50">
+                                                <UserCircle2 className="w-16 h-16" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -11,21 +11,23 @@ const sanitize = (str) => {
 };
 
 /**
- * Move uploaded file to structured agent folder
+ * Move uploaded file to structured entity folder (Agent/Student)
  * @param {Object} file - Multer file object
- * @param {Object} agent - Agent mongoose document
- * @param {String} documentKey - Document key (e.g. 'idProof', 'resume') - optional, used for filename if original name is generic? 
- *                               Actually user said "document_key_or_filename". We'll try to preserve extension.
+ * @param {Object} entity - Agent or Student mongoose document
+ * @param {String} documentKey - Document key (e.g. 'idProof', 'resume')
+ * @param {String} subFolder - Subfolder name ('agents' or 'students')
  * @returns {String} relativePath - Path to store in DB
  */
-const moveFileToAgentFolder = (file, agent, documentKey) => {
+const moveFileToEntityFolder = (file, entity, documentKey, subFolder = 'agents') => {
+    const UPLOADS_BASE = `uploads/documents/${subFolder}`;
+
     // 1. Prepare folder name components
-    const agentName = sanitize(agent.firstName + ' ' + agent.lastName);
-    const agentId = agent._id.toString();
-    const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const entityName = sanitize(entity.firstName + ' ' + entity.lastName);
+    // Use email for folder name as requested (or fallback to ID if no email, though email should be there)
+    const uniqueIdentifier = entity.email ? sanitize(entity.email) : entity._id.toString();
 
     // 2. Construct folder path
-    const folderName = `${agentName}_${agentId}_${date}`;
+    const folderName = `${entityName}_${uniqueIdentifier}`;
     const targetDir = path.join(process.cwd(), UPLOADS_BASE, folderName);
 
     // 3. Create directory
@@ -34,9 +36,6 @@ const moveFileToAgentFolder = (file, agent, documentKey) => {
     }
 
     // 4. Construct filename
-    // Requirement: "document_key_or_filename"
-    // If we have documentKey (e.g. 'idProof'), let's use it to be clean: id_proof.pdf
-    // If not, use original name.
     const ext = path.extname(file.originalname);
     let finalFilename = file.originalname;
 
@@ -49,7 +48,6 @@ const moveFileToAgentFolder = (file, agent, documentKey) => {
     const targetPath = path.join(targetDir, finalFilename);
 
     // 5. Move file
-    // Handle cases where source might be different partition (copy+unlink)
     try {
         fs.renameSync(file.path, targetPath);
     } catch (err) {
@@ -59,10 +57,10 @@ const moveFileToAgentFolder = (file, agent, documentKey) => {
     }
 
     // 6. Return relative path for DB
-    // e.g. uploads/documents/agents/ritik_saini_123_2026-02-13/id_proof.pdf
     return path.join(UPLOADS_BASE, folderName, finalFilename);
 };
 
 module.exports = {
-    moveFileToAgentFolder
+    moveFileToEntityFolder,
+    sanitize
 };

@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { User, UserCircle2, Home, GraduationCap, MessageSquare, Lock, Edit, ChevronLeft, Globe, MapPin, Phone, Mail, Calendar, FileText, CheckCircle2 } from 'lucide-react';
 import studentService from '../../services/studentService';
 import agentService from '../../services/agentService';
+import { REQUIRED_STUDENT_DOCUMENTS, ROLES } from '../../utils/constants';
+import StudentDocumentUpload from '../../components/students/StudentDocumentUpload';
 import ProgramDetailsModal from '../../components/students/ProgramDetailsModal';
+import { AlertCircle, Shield, ExternalLink, Download, Trash2, Loader2, Save, CheckCircle2 as CheckCircle } from 'lucide-react';
 
-const StudentDetails = () => {
-  const { id } = useParams();
+const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
+  const { id: paramId } = useParams();
+  const id = explicitId || paramId;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);
@@ -19,6 +24,9 @@ const StudentDetails = () => {
   const profileRef = useRef(null);
   const applicationsRef = useRef(null);
   const [selectedApp, setSelectedApp] = useState(null);
+  const [missingDocs, setMissingDocs] = useState([]);
+  const { user } = useSelector((state) => state.auth);
+  const isAdmin = [ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(user?.role);
 
   const [studentData, setStudentData] = useState({
     firstName: "",
@@ -71,7 +79,7 @@ const StudentDetails = () => {
     visaRefusal: "",
     studyPermit: "",
     backgroundDetails: "",
-    documents: [],
+    documents: {},
     applications: [] // Added applications array
   });
 
@@ -87,13 +95,9 @@ const StudentDetails = () => {
     try {
       setLoading(true);
       const response = await studentService.getStudentById(id);
-      console.log('Student API Response:', JSON.stringify(response, null, 2));
-      console.log('Student Full Data:', response);
-      console.log('Student data object:', response?.data);
 
-      // The API returns student data in response.data.student
-      const studentInfo = response?.data?.student || response?.data;
-      console.log('Mapped Student Info:', studentInfo);
+      // The API returns student data in response.data.data.student
+      const studentInfo = response?.data?.data?.student || response?.data?.student || response?.data;
 
       if (studentInfo) {
         setStudentData({
@@ -147,7 +151,7 @@ const StudentDetails = () => {
           visaRefusal: studentInfo.visaRefusal || "",
           studyPermit: studentInfo.studyPermit || "",
           backgroundDetails: studentInfo.backgroundDetails || "",
-          documents: studentInfo.documents || [],
+          documents: studentInfo.documents || {},
           applications: studentInfo.applications || [] // Map applications from API response
         });
 
@@ -161,6 +165,32 @@ const StudentDetails = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    console.log('Current Student Data State:', studentData);
+    console.log('Documents Object:', studentData.documents);
+  }, [studentData]);
+
+  // Calculate missing documents
+  useEffect(() => {
+    if (studentData && studentData.documents) {
+      console.log('Syncing Student Documents:', studentData.documents);
+      const uploadedKeys = Object.keys(studentData.documents).filter(key => studentData.documents[key]);
+      console.log('Uploaded Keys:', uploadedKeys);
+      const missing = REQUIRED_STUDENT_DOCUMENTS.filter(doc => !uploadedKeys.includes(doc.key)).map(d => d.label);
+      setMissingDocs(missing);
+    }
+  }, [studentData]);
+
+  // Construct backend URL helper
+  const getFullUrl = (url) => {
+    if (!url || typeof url !== 'string') return '';
+    if (url.startsWith('http')) return url;
+    const backendUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    // Remove leading slash from url if present
+    const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
+    return `${backendUrl}/${cleanUrl}`;
   };
 
   const handleTabClick = (tab, ref) => {
@@ -219,23 +249,24 @@ const StudentDetails = () => {
 
   return (
     <>
-      {/* Header Section with Back Button */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/students')}
-            className="flex items-center gap-2 group text-gray-600 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
-          >
-            <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-            Back to Student List
-          </button>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider">
-              Active Profile
-            </span>
+      {!explicitId && (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate('/students')}
+              className="flex items-center gap-2 group text-gray-600 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
+            >
+              <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+              Back to Student List
+            </button>
+            <div className="flex gap-2">
+              <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider">
+                Active Profile
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {/* Top Section - Navigation Pills (Outside max-w container for proper sticky) */}
       <div className="sticky top-[64px] z-40 bg-gray-50/95 backdrop-blur-md py-4 transition-all border-b border-gray-200 shadow-sm w-full px-4 md:px-8">
         <div className="flex flex-nowrap gap-4 md:justify-center justify-start overflow-x-auto pb-2 no-scrollbar w-full">
@@ -260,8 +291,32 @@ const StudentDetails = () => {
           ))}
         </div>
       </div>
-
-      <div className="max-w-7xl mx-auto space-y-6 mt-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-6 mt-6">
+        {/* Missing Documents Alert - Same as Agent Profile */}
+        {missingDocs.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="p-2 bg-amber-100 rounded-full text-amber-600 shrink-0">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-amber-900 mb-1">Action Required: Complete Student Profile</h4>
+              <p className="text-sm text-amber-700 mb-2">This student profile is missing required documents. Please upload them to ensure full verification and application readiness.</p>
+              <div className="flex flex-wrap gap-2">
+                {missingDocs.map(doc => (
+                  <span key={doc} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-md border border-amber-200 uppercase tracking-tighter">
+                    {doc}
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={() => handleTabClick('uploadDocs', uploadRef)}
+                className="mt-3 text-sm font-bold text-amber-800 hover:text-amber-900 underline decoration-2 underline-offset-2"
+              >
+                Jump to Documents Section &rarr;
+              </button>
+            </div>
+          </div>
+        )}
 
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -272,8 +327,34 @@ const StudentDetails = () => {
               <div className="px-6 pb-8">
                 <div className="relative flex justify-center -mt-12 mb-4">
                   <div className="p-1 bg-white rounded-full shadow-lg">
-                    <div className="bg-blue-50 rounded-full p-2">
-                      <UserCircle2 className="w-20 h-20 text-blue-600" />
+                    <div className="bg-blue-50 rounded-full w-24 h-24 overflow-hidden flex items-center justify-center border-2 border-white">
+                      {(() => {
+                        const docs = studentData.documents || {};
+                        // Robust check: find any key that includes 'photo' and has a value
+                        const photoKey = Object.keys(docs).find(k => k.toLowerCase().includes('photo') && docs[k]);
+
+                        let url = photoKey ? docs[photoKey] : null;
+
+                        // Handle object format (from public uploads) vs string format (from manual uploads)
+                        if (url && typeof url === 'object' && url.documentUrl) {
+                          url = url.documentUrl;
+                        }
+
+                        if (url) {
+                          return (
+                            <img
+                              src={getFullUrl(url)}
+                              alt="Profile"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '<div class="w-16 h-16 text-blue-600 flex items-center justify-center"><svg class="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>';
+                              }}
+                            />
+                          );
+                        }
+                        return <UserCircle2 className="w-16 h-16 text-blue-600" />;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -283,7 +364,7 @@ const StudentDetails = () => {
                   </h2>
                   <p className="text-gray-500 text-sm overflow-hidden text-ellipsis whitespace-nowrap">{studentData.email}</p>
                   <div className="mt-4 inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
-                    Portal Student
+                    {explicitId ? 'My Student Profile' : 'Portal Student'}
                   </div>
                 </div>
 
@@ -332,14 +413,16 @@ const StudentDetails = () => {
                   </div>
                 </div>
 
-                <div className="mt-8">
-                  <button
-                    onClick={() => navigate('/students')}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-semibold"
-                  >
-                    <Home className="w-4 h-4" /> Back to Students
-                  </button>
-                </div>
+                {!explicitId && (
+                  <div className="mt-8">
+                    <button
+                      onClick={() => navigate('/students')}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-semibold"
+                    >
+                      <Home className="w-4 h-4" /> Back to Students
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -634,48 +717,25 @@ const StudentDetails = () => {
               </div>
             </div>
 
-            {/* Upload Documents */}
+            {/* Upload Documents (Parity with Agent Module) */}
             <div ref={uploadRef} className="scroll-mt-40">
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                <div className="bg-gray-50 px-8 py-4 border-b border-gray-100">
+                <div className="bg-gray-50 px-8 py-4 border-b border-gray-100 flex items-center justify-between">
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <Home className="text-blue-600 w-5 h-5" /> Documents & Credentials
+                    <FileText className="text-blue-600 w-5 h-5" /> Document Verification Vault
                   </h3>
+                  {missingDocs.length > 0 && (
+                    <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-1 rounded-full border border-amber-200 uppercase tracking-tighter animate-pulse">
+                      {missingDocs.length} Pending
+                    </span>
+                  )}
                 </div>
                 <div className="p-8">
-                  {studentData.documents && studentData.documents.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {studentData.documents.map((doc, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-white hover:shadow-md transition-all group">
-                          <div className="flex items-center gap-4">
-                            <div className="bg-blue-100 p-2.5 rounded-xl text-blue-600">
-                              <FileText className="w-6 h-6" />
-                            </div>
-                            <div>
-                              <div className="font-bold text-gray-900 text-sm truncate max-w-[150px]">{doc.documentName}</div>
-                              <div className="text-[10px] uppercase text-gray-400 font-bold tracking-widest">{doc.documentType}</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {doc.verified && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-                            <a
-                              href={doc.documentUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="bg-white border border-gray-200 text-gray-600 p-2 rounded-lg hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm"
-                            >
-                              <Globe className="w-4 h-4" />
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-10 text-gray-400 italic">
-                      <FileText className="mx-auto w-10 h-10 mb-2 opacity-20" />
-                      No documents uploaded to this profile yet.
-                    </div>
-                  )}
+                  <StudentDocumentUpload
+                    student={{ ...studentData, id, _id: id }}
+                    onUploadSuccess={fetchStudentData}
+                    isAdmin={isAdmin && !forceReadOnly}
+                  />
                 </div>
               </div>
             </div>
@@ -732,12 +792,14 @@ const StudentDetails = () => {
                     <div className="text-center py-12 text-gray-400 italic bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100">
                       <CheckCircle2 className="mx-auto w-12 h-12 mb-3 opacity-10" />
                       <p className="font-bold text-gray-500">No applications found for this student.</p>
-                      <button
-                        onClick={() => navigate(`/program-selection/${id}`)}
-                        className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
-                      >
-                        Apply Now
-                      </button>
+                      {!forceReadOnly && (
+                        <button
+                          onClick={() => navigate(`/program-selection/${id}`)}
+                          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                        >
+                          Apply Now
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

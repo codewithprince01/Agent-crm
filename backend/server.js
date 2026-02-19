@@ -12,10 +12,27 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000' // Add 3000 just in case
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true, // Important for cookies
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
 }));
 
 // Cookie parser middleware
@@ -74,6 +91,7 @@ const settingsRoutes = require('./src/routes/settingsRoutes');
 const inquiryRoutes = require('./src/routes/inquiryRoutes');
 const studentDraftRoutes = require('./src/routes/studentDraftRoutes');
 const otpRoutes = require('./src/routes/otpRoutes');
+const agentUniversityRoutes = require('./src/routes/agentUniversityRoutes');
 const { validateReferral } = require('./src/middlewares/referralValidation');
 
 // Public referral validation endpoint (no auth required)
@@ -91,6 +109,7 @@ app.get('/api/validate-referral', validateReferral, (req, res) => {
 // Register routes
 app.use('/api/auth', authRoutes);
 app.use('/api/agents', agentRoutes);
+app.use('/api/agent-university', agentUniversityRoutes); // Added agentUniversityRoutes registration
 app.use('/api/applications', applicationRoutes);
 app.use('/api/universities', universityRoutes);
 app.use('/api/courses', courseRoutes);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, RefreshCw, PlusCircle } from 'lucide-react';
+import PageHeader from '../../components/layout/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import applicationService from '../../services/applicationService';
@@ -59,36 +60,39 @@ const AppliedStudents = () => {
     });
 
     return (
-        <div className="p-8 bg-gray-50 min-h-screen">
+        <div className="p-6">
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-4xl font-black text-gray-900 tracking-tight mb-2">
-                    Applied Students
-                </h1>
-                <p className="text-gray-500 text-sm">
-                    Students who have applied for programs
-                </p>
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Students', link: '/students' },
+                    { label: 'Applied Students' }
+                ]}
+            />
+
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">Applied Students</h1>
             </div>
 
             {/* Search and Actions Bar */}
-            <div className="bg-white rounded-2xl shadow-md p-6 mb-6 border border-gray-300">
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     {/* Search */}
                     <div className="relative flex-1 w-full md:w-auto">
-                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" size={18} />
                         <input
                             type="text"
                             placeholder="Search by name, email, phone, nationality..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                         />
                         {searchTerm && (
                             <button
                                 onClick={() => setSearchTerm('')}
                                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
-                                <X size={18} />
+                                <X size={14} />
                             </button>
                         )}
                     </div>
@@ -97,9 +101,9 @@ const AppliedStudents = () => {
                     <button
                         onClick={fetchAppliedStudents}
                         disabled={loading}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                         Refresh
                     </button>
                 </div>
@@ -135,112 +139,110 @@ const AppliedStudents = () => {
 
             {/* Table */}
             {!loading && filteredStudents.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-300">
+                <div className="bg-white rounded-lg shadow overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">S.No.</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Name</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Contact</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Nationality</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Country</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nationality</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
                                     {(user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN) && (
-                                        <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Referred By</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referred By</th>
                                     )}
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider text-center">Applications</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Registered On</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Applications</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered On</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredStudents.map((student, index) => (
-                                    <tr key={student._id} className="border-b border-gray-300 hover:bg-gray-50 transition-colors">
-                                        <td className="p-4">
-                                            <span className="font-semibold text-indigo-600">
-                                                #{index + 1}
-                                            </span>
+                                    <tr key={student._id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            #{index + 1}
                                         </td>
-                                        <td className="p-4">
-                                            <span className="font-semibold text-gray-800">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-medium text-gray-900">
                                                 {student.firstName && student.lastName
                                                     ? `${student.firstName} ${student.lastName}`
                                                     : student.name || 'N/A'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex flex-col gap-1">
-                                                <a className="text-gray-700 text-sm hover:text-indigo-600">
-                                                    {student.email || 'N/A'}
-                                                </a>
-                                                <a className="text-gray-500 text-xs hover:text-indigo-600">
-                                                    {student.phone || 'N/A'}
-                                                </a>
                                             </div>
                                         </td>
-                                        <td className="p-4">
-                                            <span className="text-gray-600">{student.nationality || 'N/A'}</span>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-900">{student.email || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500">{student.phone || 'N/A'}</div>
                                         </td>
-                                        <td className="p-4">
-                                            <span className="text-gray-600">{student.country || 'N/A'}</span>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {student.nationality || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {student.country || 'N/A'}
                                         </td>
                                         {(user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN) && (
-                                            <td className="p-4">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col">
-                                                    <span className="text-gray-800 font-medium">
+                                                    <span className="text-sm text-gray-900">
                                                         {student.referredByName || 'Direct'}
                                                     </span>
                                                     {student.referredByRole && student.referredByRole !== 'Direct' && student.referredByRole !== 'N/A' && (
-                                                        <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">
+                                                        <span className="text-xs text-indigo-600">
                                                             {student.referredByRole}
                                                         </span>
                                                     )}
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="p-4">
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <div className="flex items-center justify-center">
-                                                <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all min-w-[180px]">
-                                                    <span className="text-gray-700 text-sm font-semibold">
-                                                        Total Applied: {student.applications?.length || 1}
-                                                    </span>
+                                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-100">
+                                                    <span>{student.applications?.length || 1} Applied</span>
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             navigate(`/pending-applications?studentId=${student._id}`);
                                                         }}
-                                                        className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
+                                                        className="p-1 hover:bg-green-100 rounded-full transition-colors"
                                                         title="Add Another Application"
                                                     >
-                                                        <PlusCircle size={16} />
+                                                        <PlusCircle size={14} />
                                                     </button>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="p-4 whitespace-nowrap">
-                                            <span className="text-gray-600">
-                                                {student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'N/A'}
-                                            </span>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'N/A'}
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => navigate(`/students/${student._id}`)}
-                                                    className="px-3 py-1.5 border border-blue-300 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
-                                                    title="View Details"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                                    </svg>
-                                                    View
-                                                </button>
-                                            </div>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button
+                                                onClick={() => navigate(`/students/${student._id}`)}
+                                                className="px-3 py-1.5 border border-blue-300 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                                                title="View Details"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                                </svg>
+                                                View detail
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm text-gray-700">
+                                Showing <span className="font-medium">{filteredStudents.length}</span> of <span className="font-medium">{students.length}</span> students
+                            </div>
+                            <div className="flex gap-2">
+                                {/* Add pagination controls here if implemented in state */}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

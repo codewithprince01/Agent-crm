@@ -1,32 +1,8 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// Sub-schema for embedded documents
-const studentDocumentSchema = new mongoose.Schema({
-  documentType: {
-    type: String,
-    required: true
-  },
-  documentName: {
-    type: String,
-    required: true
-  },
-  documentUrl: {
-    type: String,
-    required: true
-  },
-  verified: {
-    type: Boolean,
-    default: false
-  },
-  verifiedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  verifiedAt: Date
-}, {
-  timestamps: { createdAt: true, updatedAt: false }
-});
+// Sub-schema for student documents is no longer used for consistency with Agent module
+// We now use a Map for flexible document storage
 
 const studentSchema = new mongoose.Schema({
   // Authentication
@@ -100,13 +76,6 @@ const studentSchema = new mongoose.Schema({
   country: String,
   postalCode: String,
   homeContactNumber: String,
-
-  // Identity Proof
-  identityProofType: {
-    type: String,
-    enum: ['Aadhaar', 'PAN', 'Passport', 'Driving License']
-  },
-  identityProofNumber: String,
 
   // Academic & Education
   academicLevel: String,
@@ -223,8 +192,12 @@ const studentSchema = new mongoose.Schema({
     max: 4
   },
 
-  // Embedded documents array
-  documents: [studentDocumentSchema],
+  // Document Storage (Same Map pattern as Agent)
+  documents: {
+    type: Map,
+    of: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
 
   // Status
   status: {
@@ -234,7 +207,9 @@ const studentSchema = new mongoose.Schema({
   },
   lastLogin: Date
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { flattenMaps: true, getters: true, virtuals: true },
+  toObject: { flattenMaps: true, getters: true, virtuals: true }
 });
 
 // Compound index for email uniqueness (only for completed students)
@@ -265,7 +240,7 @@ studentSchema.methods.comparePassword = async function (candidatePassword) {
 
 // Hide password in JSON responses
 studentSchema.methods.toJSON = function () {
-  const obj = this.toObject();
+  const obj = this.toObject({ flattenMaps: true });
   delete obj.password;
   return obj;
 };

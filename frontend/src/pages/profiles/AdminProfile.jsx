@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { User, UserCircle2, Home, ChevronLeft, Mail, Calendar, Shield, Building2 } from 'lucide-react';
+import PageHeader from '../../components/layout/PageHeader';
 import apiClient from '../../services/apiClient';
 
 const AdminProfile = () => {
@@ -12,14 +13,13 @@ const AdminProfile = () => {
     return (
         <div className="max-w-5xl mx-auto space-y-6">
             {/* Header Section */}
-            <div className="flex items-center justify-between mb-2">
-                <button
-                    onClick={() => navigate('/dashboard')}
-                    className="flex items-center gap-2 group text-gray-600 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
-                >
-                    <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-                    Back to Dashboard
-                </button>
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Profile' }
+                ]}
+            />
+            <div className="flex items-center justify-end mb-2">
                 <div className="flex gap-2">
                     <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-full border border-purple-100 uppercase tracking-wider">
                         {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'} Profile

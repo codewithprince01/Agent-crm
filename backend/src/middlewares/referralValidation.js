@@ -85,7 +85,7 @@ const validateReferral = async (req, res, next) => {
         res.cookie('student_referral', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-            sameSite: 'lax',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-site (if needed), 'lax' for local
             maxAge: cookieExpiry * 24 * 60 * 60 * 1000, // Convert days to milliseconds
             path: '/'
         });

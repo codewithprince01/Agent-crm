@@ -14,10 +14,14 @@ const AuditLog = require('./AuditLog');
 const Setting = require('./Setting');
 const Counter = require('./Counter');
 const CountryDetail = require('./CountryDetail');
+const EmailVerification = require('./EmailVerification');
+const Brochure = require('./Brochure');
 const BrochureType = require('./BrochureType');
 const BrochureCategory = require('./BrochureCategory');
 const UniversityProgram = require('./UniversityProgram');
-const Brochure = require('./Brochure');
+const AgentUniversityAssignment = require('./AgentUniversityAssignment'); // Added based on Code Edit
+
+// Removed: CommissionRule, Commission, Payout based on Code Edit
 
 // No need to define associations in Mongoose
 // Relationships are handled via refs and populate()
@@ -27,17 +31,19 @@ module.exports = {
   Agent,
   Student,
   University,
+  CountryDetail,
   Course,
-  Application,
-  CommissionRule,
-  Commission,
-  Payout,
   AuditLog,
+  Application,
+  EmailVerification,
   Setting,
   Counter,
-  CountryDetail,
+  Brochure,
   BrochureType,
   BrochureCategory,
   UniversityProgram,
-  Brochure
+  AgentUniversityAssignment,
+  Commission,
+  CommissionRule,
+  Payout
 };

@@ -27,7 +27,7 @@ class ApplicationController {
         {
           $match: {
             ...matchQuery,
-            ...(req.userRole !== 'AGENT' ? { isCompleted: true } : {})
+            isCompleted: true
           }
         },
         {
@@ -84,7 +84,70 @@ class ApplicationController {
           }
         },
         { $match: { 'applications.0': { $exists: true } } },
-        { $project: { password: 0 } }
+        {
+          $addFields: {
+            referredByObjId: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$referredBy", null] },
+                    { $ne: ["$referredBy", ""] },
+                    { $eq: [{ $strLenCP: "$referredBy" }, 24] } // Simple check for ObjectId length
+                  ]
+                },
+                then: { $toObjectId: "$referredBy" },
+                else: null
+              }
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: 'agents',
+            localField: 'referredByObjId',
+            foreignField: '_id',
+            as: 'agentReferrer'
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'referredByObjId',
+            foreignField: '_id',
+            as: 'userReferrer'
+          }
+        },
+        {
+          $addFields: {
+            referredByName: {
+              $cond: {
+                if: { $gt: [{ $size: "$agentReferrer" }, 0] },
+                then: { $concat: [{ $arrayElemAt: ["$agentReferrer.firstName", 0] }, " ", { $arrayElemAt: ["$agentReferrer.lastName", 0] }] },
+                else: {
+                  $cond: {
+                    if: { $gt: [{ $size: "$userReferrer" }, 0] },
+                    then: { $arrayElemAt: ["$userReferrer.name", 0] },
+                    else: "Direct"
+                  }
+                }
+              }
+            },
+            referredByRole: {
+              $cond: {
+                if: { $gt: [{ $size: "$agentReferrer" }, 0] },
+                then: "Agent",
+                else: {
+                  $cond: {
+                    if: { $gt: [{ $size: "$userReferrer" }, 0] },
+                    then: { $arrayElemAt: ["$userReferrer.role", 0] },
+                    else: "Direct"
+                  }
+                }
+              }
+            }
+          }
+        },
+        { $project: { password: 0, agentReferrer: 0, userReferrer: 0, referredByObjId: 0 } }
       ]);
 
       return ResponseHandler.success(res, 'Applied students retrieved successfully', students);

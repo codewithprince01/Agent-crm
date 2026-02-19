@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog';
+import PageHeader from '../../components/layout/PageHeader';
 
 const AuditLogList = () => {
   const { success, error: showError } = useToast();
@@ -223,6 +224,13 @@ const AuditLogList = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Page Header */}
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Dashboard', link: '/dashboard' },
+          { label: 'Audit Logs' }
+        ]}
+      />
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">

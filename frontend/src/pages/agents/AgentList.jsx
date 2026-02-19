@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import agentService from '../../services/agentService';
 import externalSearchService from '../../services/externalSearchService';
 import {
-  Building, Globe, Check, Save, Loader2, Shield, Search, Star, ShieldAlert, ShieldCheck
+  Building, Globe, Check, Save, Loader2, Shield, Search, Star, ShieldAlert, ShieldCheck, Plus, ChevronRight
 } from 'lucide-react';
+import PageHeader from '../../components/layout/PageHeader';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -228,13 +229,21 @@ const AgentList = () => {
 
   return (
     <div className="p-6">
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Dashboard', link: '/dashboard' },
+          { label: 'Agents List' }
+        ]}
+      />
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Agents</h1>
         <button
           onClick={() => navigate('/agents/create')}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 cursor-pointer"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition duration-200 cursor-pointer shadow-lg shadow-blue-100"
         >
-          Add New Agent
+          <Plus size={18} />
+          <span>Add New Agent</span>
         </button>
       </div>
 

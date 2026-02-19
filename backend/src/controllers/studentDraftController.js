@@ -42,9 +42,7 @@ const mapFormToSchema = (formData) => {
         visaRefusal: formData.visa_refusal,
         studyPermit: formData.study_permit,
         backgroundDetails: formData.background_details,
-        referredBy: formData.referredBy,
-        identityProofType: sanitize(formData.identityProofType) || sanitize(formData.identity_type), // Handle both keys
-        identityProofNumber: formData.identityProofNumber || formData.identity_number
+        referredBy: formData.referredBy
     };
 };
 
@@ -385,6 +383,45 @@ exports.completeDraft = async (req, res) => {
 exports.cleanupOldDrafts = async (req, res) => {
     try {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+        const fs = require('fs');
+        const path = require('path');
+
+        const draftsToDelete = await Student.find({
+            isDraft: true,
+            isCompleted: false,
+            createdAt: { $lt: thirtyDaysAgo }
+        });
+
+        for (const draft of draftsToDelete) {
+            try {
+                const baseUploadPath = 'uploads/documents/students';
+
+                // 1. Try Email-based folder
+                if (draft.email) {
+                    const safeName = `${draft.firstName}_${draft.lastName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                    const safeEmail = draft.email.replace(/[^a-zA-Z0-9]/g, '_');
+                    const emailFolder = `${safeName}_${safeEmail}`;
+                    const emailPath = path.join(process.cwd(), baseUploadPath, emailFolder);
+                    if (fs.existsSync(emailPath)) {
+                        fs.rmSync(emailPath, { recursive: true, force: true });
+                        console.log(`Deleted draft folder (Email): ${emailPath}`);
+                    }
+                }
+
+                // 2. Legacy: TempId
+                const safeName = `${draft.firstName}_${draft.lastName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                const folderName = `${safeName}_${draft.tempStudentId}`;
+                const fullPath = path.join(process.cwd(), baseUploadPath, folderName);
+
+                if (fs.existsSync(fullPath)) {
+                    fs.rmSync(fullPath, { recursive: true, force: true });
+                    console.log(`Deleted draft folder (TempId): ${fullPath}`);
+                }
+            } catch (err) {
+                console.error(`Error deleting folder for draft ${draft._id}:`, err);
+            }
+        }
 
         const result = await Student.deleteMany({
             isDraft: true,

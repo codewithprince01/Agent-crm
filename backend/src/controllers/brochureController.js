@@ -1,9 +1,19 @@
-const { BrochureType, BrochureCategory, UniversityProgram, Brochure } = require('../models');
+const { BrochureType, BrochureCategory, UniversityProgram, Brochure, AgentUniversityAssignment } = require('../models');
 const ResponseHandler = require('../utils/responseHandler');
 const logger = require('../utils/logger');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
+
+const slugify = (text) => {
+    return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')     // Replace spaces with -
+        .replace(/[^\w-]+/g, '')  // Remove all non-word chars
+        .replace(/--+/g, '-');    // Replace multiple - with single -
+};
 
 class BrochureController {
     // Brochure Types
@@ -164,7 +174,12 @@ class BrochureController {
     // University Programs (ups)
     static async getAllUniversityPrograms(req, res) {
         try {
-            const ups = await UniversityProgram.find().populate('brochure_type_id').sort({ name: 1 });
+            let query = {};
+            if (req.userRole?.toUpperCase() === 'AGENT') {
+                const assignedUPs = await AgentUniversityAssignment.find({ agentId: req.userId }).distinct('universityId');
+                query._id = { $in: assignedUPs };
+            }
+            const ups = await UniversityProgram.find(query).populate('brochure_type_id').sort({ name: 1 });
 
             // Add brochure counts
             const upsWithCounts = await Promise.all(ups.map(async (up) => {
@@ -185,7 +200,14 @@ class BrochureController {
     static async getUniversityProgramsByType(req, res) {
         try {
             const { typeId } = req.params;
-            const ups = await UniversityProgram.find({ brochure_type_id: typeId }).sort({ name: 1 });
+            let query = { brochure_type_id: typeId };
+
+            if (req.userRole?.toUpperCase() === 'AGENT') {
+                const assignedUPs = await AgentUniversityAssignment.find({ agentId: req.userId }).distinct('universityId');
+                query._id = { $in: assignedUPs };
+            }
+
+            const ups = await UniversityProgram.find(query).sort({ name: 1 });
 
             // Add brochure counts
             const upsWithCounts = await Promise.all(ups.map(async (up) => {
@@ -276,6 +298,18 @@ class BrochureController {
     static async getBrochuresByUP(req, res) {
         try {
             const { upId } = req.params;
+
+            // Permission check for agents
+            if (req.userRole?.toUpperCase() === 'AGENT') {
+                const isAssigned = await AgentUniversityAssignment.findOne({
+                    agentId: req.userId,
+                    universityId: upId
+                });
+                if (!isAssigned) {
+                    return ResponseHandler.forbidden(res, 'You are not assigned to this university program');
+                }
+            }
+
             const brochures = await Brochure.find({ university_program_id: upId }).populate('brochure_category_id');
             return ResponseHandler.success(res, 'Brochures retrieved successfully', brochures);
         } catch (error) {
@@ -284,20 +318,15 @@ class BrochureController {
         }
     }
 
-    static async getDynamicStoragePath(categoryId, originalFilename) {
-        const category = await BrochureCategory.findById(categoryId).populate('brochure_type_id');
-        if (!category) return null;
+    static async getDynamicStoragePath(upId, brochureTitle) {
+        const up = await UniversityProgram.findById(upId);
+        if (!up) return null;
 
-        const typeName = category.brochure_type_id?.name || 'Standard';
-        const categoryName = category.name;
-        const dateStr = moment().format('DD-MM-YYYY');
+        const universityName = up.name || 'University';
+        const folderName = `${slugify(universityName)}_${slugify(brochureTitle)}`;
 
-        // Sanitize names for folder paths
-        const sanitize = (str) => str.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const mainFolderName = `${sanitize(typeName)}_${sanitize(categoryName)}_${dateStr}`;
-
-        // Simplified path: documents/brochure/{type}_{name}_{date}
-        const relativePath = path.join('documents', 'brochure', mainFolderName);
+        // Path: documents/brochure/{university}_{brochureTitle}
+        const relativePath = path.join('documents', 'brochure', folderName);
         const absolutePath = path.join(process.cwd(), 'uploads', relativePath);
 
         if (!fs.existsSync(absolutePath)) {
@@ -332,31 +361,41 @@ class BrochureController {
 
             // If a file was uploaded, add the URL
             if (req.file) {
+                const brochureTitle = brochureData.title || 'Brochure';
                 const storageInfo = await BrochureController.getDynamicStoragePath(
-                    brochureData.brochure_category_id,
-                    req.file.originalname
+                    upId,
+                    brochureTitle
                 );
 
                 if (storageInfo) {
-                    const finalPath = path.join(storageInfo.absolutePath, req.file.originalname);
+                    const extension = path.extname(req.file.originalname);
+                    let baseFileName = slugify(brochureTitle);
+                    let finalFileName = `${baseFileName}${extension}`;
+                    let finalPath = path.join(storageInfo.absolutePath, finalFileName);
+
+                    // Handle uniqueness
+                    if (fs.existsSync(finalPath)) {
+                        const timestamp = Math.floor(Date.now() / 1000);
+                        finalFileName = `${baseFileName}_${timestamp}${extension}`;
+                        finalPath = path.join(storageInfo.absolutePath, finalFileName);
+                    }
+
                     fs.renameSync(req.file.path, finalPath);
 
-                    const fileUrl = `${storageInfo.relativePath}/${req.file.originalname}`;
+                    const fileUrl = `${storageInfo.relativePath}/${finalFileName}`;
                     brochureData.fileUrl = fileUrl;
+                    brochureData.name = finalFileName; // Store renamed filename
                     if (!brochureData.url) {
                         brochureData.url = fileUrl;
                     }
                 } else {
-                    // Fallback to temp if category not found (shouldn't happen with validation)
+                    // Fallback to temp if UP not found
                     const fileUrl = `/uploads/temp/${req.file.filename}`;
                     brochureData.fileUrl = fileUrl;
+                    brochureData.name = req.file.filename;
                     if (!brochureData.url) {
                         brochureData.url = fileUrl;
                     }
-                }
-
-                if (!brochureData.name) {
-                    brochureData.name = req.file.originalname;
                 }
             }
 
@@ -388,31 +427,57 @@ class BrochureController {
             }
 
             if (req.file) {
-                const categoryId = updateData.brochure_category_id || (await Brochure.findById(id)).brochure_category_id;
+                const existingBrochure = await Brochure.findById(id);
+                if (!existingBrochure) return ResponseHandler.notFound(res, 'Brochure not found');
+
+                const brochureTitle = updateData.title || existingBrochure.title || 'Brochure';
+                const upId = existingBrochure.university_program_id;
+
                 const storageInfo = await BrochureController.getDynamicStoragePath(
-                    categoryId,
-                    req.file.originalname
+                    upId,
+                    brochureTitle
                 );
 
                 if (storageInfo) {
-                    const finalPath = path.join(storageInfo.absolutePath, req.file.originalname);
+                    const extension = path.extname(req.file.originalname);
+                    let baseFileName = slugify(brochureTitle);
+                    let finalFileName = `${baseFileName}${extension}`;
+                    let finalPath = path.join(storageInfo.absolutePath, finalFileName);
+
+                    // Handle uniqueness
+                    if (fs.existsSync(finalPath)) {
+                        const timestamp = Math.floor(Date.now() / 1000);
+                        finalFileName = `${baseFileName}_${timestamp}${extension}`;
+                        finalPath = path.join(storageInfo.absolutePath, finalFileName);
+                    }
+
                     fs.renameSync(req.file.path, finalPath);
 
-                    const fileUrl = `${storageInfo.relativePath}/${req.file.originalname}`;
+                    const fileUrl = `${storageInfo.relativePath}/${finalFileName}`;
                     updateData.fileUrl = fileUrl;
+                    updateData.name = finalFileName;
                     if (!updateData.url) {
                         updateData.url = fileUrl;
+                    }
+
+                    // Optional: Clean up old file if name/path changed
+                    if (existingBrochure.fileUrl && existingBrochure.fileUrl !== fileUrl) {
+                        try {
+                            const oldAbsolutePath = path.join(process.cwd(), 'uploads', existingBrochure.fileUrl);
+                            if (fs.existsSync(oldAbsolutePath)) {
+                                fs.unlinkSync(oldAbsolutePath);
+                            }
+                        } catch (err) {
+                            logger.error('Error deleting old brochure file during update', { error: err.message });
+                        }
                     }
                 } else {
                     const fileUrl = `/uploads/temp/${req.file.filename}`;
                     updateData.fileUrl = fileUrl;
+                    updateData.name = req.file.filename;
                     if (!updateData.url) {
                         updateData.url = fileUrl;
                     }
-                }
-
-                if (!updateData.name) {
-                    updateData.name = req.file.originalname;
                 }
             }
 

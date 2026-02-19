@@ -9,6 +9,7 @@ import { fetchSettings as fetchSettingsThunk } from '../../store/slices/settings
 import settingService from '../../services/settingService';
 import uploadService from '../../services/uploadService';
 import { useToast } from '../../components/ui/toast';
+import PageHeader from '../../components/layout/PageHeader';
 const Settings = () => {
     const dispatch = useDispatch();
     const { success: toastSuccess, error: toastError } = useToast();
@@ -107,6 +108,12 @@ const Settings = () => {
 
     return (
         <div className="max-w-7xl mx-auto p-6 lg:p-10 space-y-8">
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Settings' }
+                ]}
+            />
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b border-gray-100">
                 <div>

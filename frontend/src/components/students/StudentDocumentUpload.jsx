@@ -11,21 +11,26 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '../ui/alert-dialog';
-import agentService from '../../services/agentService';
-import { REQUIRED_AGENT_DOCUMENTS } from '../../utils/constants';
+import studentService from '../../services/studentService';
+import { REQUIRED_STUDENT_DOCUMENTS } from '../../utils/constants';
 
-const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
+
+const StudentDocumentUpload = ({ student, onUploadSuccess, isAdmin = false, isManualMode = false, pendingDocs = [], setPendingDocs }) => {
     const toast = useToast();
     const [uploadingDoc, setUploadingDoc] = useState(false);
-    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null); // Key of doc to delete
     const [docName, setDocName] = useState('');
     const [docKey, setDocKey] = useState(''); // Hidden key for smart selection
     const [file, setFile] = useState(null);
     const fileInputRef = useRef(null);
 
     // Calculate missing documents
-    const uploadedKeys = agent?.documents ? Object.keys(agent.documents).filter(key => agent.documents[key]) : [];
-    const missingDocs = REQUIRED_AGENT_DOCUMENTS.filter(doc => !uploadedKeys.includes(doc.key));
+    // In manual mode, check against pendingDocs
+    const uploadedKeys = isManualMode
+        ? pendingDocs.map(d => d.key || d.label)
+        : (student?.documents ? Object.keys(student.documents).filter(key => student.documents[key]) : []);
+
+    const missingDocs = REQUIRED_STUDENT_DOCUMENTS.filter(doc => !uploadedKeys.includes(doc.key));
 
     const handleFileSelect = (e) => {
         const selectedFile = e.target.files[0];
@@ -56,17 +61,34 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
         }
 
         setUploadingDoc(true);
-        const formData = new FormData();
-        // Use docKey if available (smart selected), otherwise fallback to exact docName or valid key
-        // The backend likely expects specific keys for mapping, but also supports generic names.
-        // If docKey is set, we send that as documentName to ensure it maps to the schema field.
-        formData.append('documentName', docKey || docName);
-        formData.append('file', file);
 
         try {
-            const userId = agent._id || agent.id;
-            await agentService.uploadDocument(userId, formData);
-            toast.success('Document uploaded successfully!');
+            if (isManualMode) {
+                // Client-side staging
+                const newDoc = {
+                    key: docKey || docName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                    label: docName,
+                    file: file,
+                    previewUrl: URL.createObjectURL(file), // Create local preview URL
+                    type: file.type
+                };
+
+                // Remove existing if replacing
+                const filtered = pendingDocs.filter(d => d.key !== newDoc.key && d.label !== newDoc.label);
+                setPendingDocs([...filtered, newDoc]);
+
+                toast.success('Document added to list');
+            } else {
+                // Server-side upload
+                const formData = new FormData();
+                formData.append('documentName', docKey || docName);
+                formData.append('file', file);
+
+                const userId = student._id || student.id;
+                await studentService.uploadDocument(userId, formData);
+                toast.success('Document uploaded successfully!');
+                if (onUploadSuccess) onUploadSuccess();
+            }
 
             // Reset form
             setDocName('');
@@ -74,8 +96,6 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
             setFile(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
 
-            // Refresh parent
-            if (onUploadSuccess) onUploadSuccess();
         } catch (error) {
             console.error('Upload failed:', error);
             toast.error(error.response?.data?.message || 'Failed to upload document');
@@ -88,11 +108,19 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
         if (!deleteConfirm) return;
 
         try {
-            const userId = agent._id || agent.id;
-            await agentService.deleteDocument(userId, deleteConfirm);
-            toast.success('Document deleted successfully');
+            if (isManualMode) {
+                // Client-side delete
+                const updated = pendingDocs.filter(d => (d.key || d.label) !== deleteConfirm);
+                setPendingDocs(updated);
+                toast.success('Document removed from list');
+            } else {
+                // Server-side delete
+                const userId = student._id || student.id;
+                await studentService.deleteDocument(userId, deleteConfirm);
+                toast.success('Document deleted successfully');
+                if (onUploadSuccess) onUploadSuccess();
+            }
             setDeleteConfirm(null);
-            if (onUploadSuccess) onUploadSuccess();
         } catch (error) {
             console.error('Delete failed:', error);
             toast.error('Failed to delete document');
@@ -103,9 +131,12 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
     // Construct backend URL helper
     const getFullUrl = (url) => {
         if (!url || typeof url !== 'string') return '';
+        if (url.startsWith('blob:')) return url; // Handle local preview URLs
         if (url.startsWith('http')) return url;
         const backendUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-        return `${backendUrl}/${url}`;
+        // Remove leading slash from url if present to avoid double slash
+        const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
+        return `${backendUrl}/${cleanUrl}`;
     };
 
     return (
@@ -144,7 +175,7 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
             <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                 <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <Upload className="w-4 h-4 text-blue-600" />
-                    Upload Document
+                    {isManualMode ? 'Add Document ' : 'Upload Document'}
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
@@ -158,12 +189,11 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
                                 value={docName}
                                 onChange={(e) => {
                                     setDocName(e.target.value);
-                                    // If user types manually, clear the smart key to avoid mismatch
-                                    if (docKey && e.target.value !== REQUIRED_AGENT_DOCUMENTS.find(d => d.key === docKey)?.label) {
+                                    if (docKey && e.target.value !== REQUIRED_STUDENT_DOCUMENTS.find(d => d.key === docKey)?.label) {
                                         setDocKey('');
                                     }
                                 }}
-                                placeholder="e.g. ID Proof"
+                                placeholder="e.g. 10th Marksheet"
                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:font-normal"
                             />
                             {docKey && (
@@ -184,7 +214,7 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
                             type="file"
                             ref={fileInputRef}
                             onChange={handleFileSelect}
-                            accept={docKey === 'agentPhoto' ? ".jpg,.jpeg,.png,.webp,.avif,.heic" : ".pdf,.jpg,.jpeg,.png,.webp"}
+                            accept={docKey === 'photo' ? ".jpg,.jpeg,.png,.webp,.avif,.heic" : ".pdf,.jpg,.jpeg,.png,.webp"}
                             className="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all cursor-pointer"
                         />
                     </div>
@@ -196,7 +226,7 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
                             className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                             {uploadingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            {uploadingDoc ? 'Saving...' : 'Upload'}
+                            {uploadingDoc ? 'Saving...' : (isManualMode ? 'Add' : 'Upload')}
                         </button>
                     </div>
                 </div>
@@ -206,12 +236,29 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {uploadedKeys.length > 0 ? (
                     uploadedKeys.map((key) => {
-                        const url = agent.documents[key];
-                        if (!url) return null;
+                        let url, label, isRequired;
 
+                        if (isManualMode) {
+                            const doc = pendingDocs.find(d => (d.key || d.label) === key);
+                            if (!doc) return null;
+                            url = doc.previewUrl;
+                            label = doc.label;
+                            isRequired = REQUIRED_STUDENT_DOCUMENTS.some(d => d.key === doc.key);
+                        } else {
+                            const val = student.documents[key];
+                            // Handle object format validation
+                            if (val && typeof val === 'object' && val.documentUrl) {
+                                url = val.documentUrl;
+                            } else {
+                                url = val;
+                            }
+
+                            label = REQUIRED_STUDENT_DOCUMENTS.find(d => d.key === key)?.label || key.replace(/([A-Z])/g, ' $1').trim();
+                            isRequired = REQUIRED_STUDENT_DOCUMENTS.some(d => d.key === key);
+                        }
+
+                        if (!url) return null;
                         const fullUrl = getFullUrl(url);
-                        const isRequired = REQUIRED_AGENT_DOCUMENTS.some(d => d.key === key);
-                        const label = REQUIRED_AGENT_DOCUMENTS.find(d => d.key === key)?.label || key.replace(/([A-Z])/g, ' $1').trim();
 
                         return (
                             <div key={key} className="group flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all">
@@ -222,7 +269,7 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold text-gray-900 truncate">{label}</p>
                                         <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mt-0.5 flex items-center gap-1">
-                                            {isRequired ? <span className="text-emerald-600 flex items-center gap-0.5"><Shield className="w-3 h-3" /> Verified</span> : 'Optional Document'}
+                                            {isRequired ? <span className="text-emerald-600 flex items-center gap-0.5"><Shield className="w-3 h-3" /> {isManualMode ? 'Ready to Upload' : 'Verified'}</span> : 'Optional Document'}
                                         </p>
                                     </div>
                                 </div>
@@ -230,10 +277,12 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
                                     <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View">
                                         <ExternalLink className="w-4 h-4" />
                                     </a>
-                                    <a href={fullUrl} download className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Download">
-                                        <Download className="w-4 h-4" />
-                                    </a>
-                                    {isAdmin && (
+                                    {!isManualMode && (
+                                        <a href={fullUrl} download className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Download">
+                                            <Download className="w-4 h-4" />
+                                        </a>
+                                    )}
+                                    {(isAdmin || isManualMode) && (
                                         <button onClick={() => setDeleteConfirm(key)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Delete">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
@@ -277,4 +326,4 @@ const AgentDocumentUpload = ({ agent, onUploadSuccess, isAdmin = false }) => {
     );
 };
 
-export default AgentDocumentUpload;
+export default StudentDocumentUpload;

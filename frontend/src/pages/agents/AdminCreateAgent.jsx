@@ -4,6 +4,7 @@ import {
     ArrowLeft, ArrowRight, Check, AlertCircle, Upload, X,
     User, Building, Target, Award, FileText, CheckCircle2
 } from 'lucide-react';
+import PageHeader from '../../components/layout/PageHeader';
 import { useToast } from '../../components/ui/toast';
 import agentService from '../../services/agentService';
 import apiClient from '../../services/apiClient';
@@ -225,15 +226,17 @@ const AdminCreateAgent = () => {
         <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4">
             <div className="w-full max-w-4xl">
                 {/* Header */}
-                <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div>
-                        <button onClick={() => navigate('/agents')} className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-emerald-600 mb-4 transition-colors group">
-                            <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
-                            Back to Agents List
-                        </button>
-                        <h1 className="text-3xl font-bold text-gray-900">Create New Agent</h1>
-                        <p className="text-gray-500 mt-1">Add a new agent to the system with complete details.</p>
-                    </div>
+                <PageHeader
+                    breadcrumbs={[
+                        { label: 'Dashboard', link: '/dashboard' },
+                        { label: 'Agents', link: '/agents' },
+                        { label: 'Create Agent' }
+                    ]}
+                />
+
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">Create New Agent</h1>
+                    <p className="text-gray-500 mt-1">Add a new agent to the system with complete details.</p>
                 </div>
 
                 {/* Horizontal Stepper */}

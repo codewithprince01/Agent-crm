@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { brochureService } from '../../services/brochureService';
 import { FiEdit2, FiPlus, FiSearch, FiTrash2, FiCheck, FiX } from 'react-icons/fi';
+import PageHeader from '../../components/layout/PageHeader';
 import { useToast } from '../../components/ui/toast';
 import {
     AlertDialog,
@@ -189,6 +190,12 @@ const BrochureTypes = () => {
     return (
         <div className="p-6">
             {/* Header */}
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Brochure Types' }
+                ]}
+            />
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Brochure Types</h1>
             </div>

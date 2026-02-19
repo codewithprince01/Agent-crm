@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronRight, ChevronLeft, Search, GraduationCap, Building2,
     Globe, BookOpen, Layers, CheckCircle, AlertCircle,
-    RefreshCw, Filter, ArrowRight, Star, Clock, Sparkles
+    RefreshCw, Filter, ArrowRight, Star, Clock, Sparkles, Loader2
 } from 'lucide-react';
 import externalSearchService from '../../services/externalSearchService';
 import studentService from '../../services/studentService';
 import applicationService from '../../services/applicationService';
 import { useToast } from '../../components/ui/toast';
+import PageHeader from '../../components/layout/PageHeader';
 import './ProgramSelection.css';
 
 const ProgramSelectionFlow = () => {
@@ -354,18 +355,15 @@ const ProgramSelectionFlow = () => {
                 whileTap={{ scale: 0.98 }}
                 onClick={onClick}
                 className={`
-                    group relative flex flex-col p-6 rounded-[32px] border-2 transition-all duration-500 overflow-hidden text-left
+                    group relative flex flex-col p-6 rounded-xl border transition-all duration-300 overflow-hidden text-left
                     ${isActive
-                        ? 'border-primary-500 bg-white shadow-2xl shadow-primary-500/20'
-                        : 'border-white bg-white/60 hover:border-primary-200 hover:shadow-xl hover:bg-white'
+                        ? 'border-indigo-600 bg-indigo-50 shadow-md ring-1 ring-indigo-600'
+                        : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-lg'
                     }
                 `}
             >
-                <div className={`
-                    h-14 w-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500
-                    ${isActive ? 'bg-primary-600 text-white rotate-6' : 'bg-gray-50 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-500'}
-                `}>
-                    <Icon size={28} />
+                <div> {/* Removed Icon Container Background */}
+                    <Icon size={28} className={`${isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-500'}`} />
                 </div>
 
                 <div className="w-full">
@@ -424,125 +422,86 @@ const ProgramSelectionFlow = () => {
     }
 
     return (
-        <div className="program-selection-container p-4 md:p-12 max-w-[1500px] mx-auto min-h-screen bg-[#F8FAFC]">
-            <div className="hero-glow"></div>
+        <div className="p-6">
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Students', link: '/students' },
+                    { label: 'Program Selection' }
+                ]}
+            />
 
-            {/* Nav Header */}
-            <div className="mb-12 flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div className="flex items-center gap-6 w-full lg:w-auto">
-                    <button
-                        onClick={() => step > 1 ? (setStep(step - 1), setPreviewProgram(null)) : navigate(-1)}
-                        className="p-5 glass-card rounded-2xl text-gray-500 hover:text-primary-600 hover:border-primary-200 transition-all active:scale-90 group border-none shadow-sm"
-                    >
-                        <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
-                    </button>
-                    <div>
-                        <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary-500 mb-1">
-                            <Sparkles size={12} fill="currentColor" />
-                            <span>University Selection</span>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">
+                    Program Selection: <span className="text-indigo-600">{student?.firstName} {student?.lastName}</span>
+                </h1>
+
+                {/* Progress Visualizer - Simplified */}
+                <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div
+                            key={i}
+                            className={`
+                                w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all
+                                ${step === i ? 'bg-indigo-600 text-white border-indigo-600' :
+                                    step > i ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-300 border-gray-200'}
+                            `}
+                        >
+                            {step > i ? <CheckCircle size={14} /> : i}
                         </div>
-                        <h1 className="text-4xl font-black text-indigo-950 tracking-tighter">
-                            Student: <span className="text-primary-600 underline decoration-primary-200 decoration-8 underline-offset-4">{student?.firstName} {student?.lastName}</span>
-                        </h1>
-                    </div>
-                </div>
-
-                {/* Progress Visualizer */}
-                <div className="flex items-center gap-4 bg-white/50 backdrop-blur-xl p-2 pl-6 rounded-[32px] border border-white shadow-xl shadow-black/[0.02] w-full lg:w-auto">
-                    <div className="flex -space-x-3 overflow-hidden">
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                            <motion.div
-                                key={i}
-                                animate={{ scale: step === i ? 1.2 : 1, zIndex: step === i ? 10 : 0 }}
-                                className={`
-                                    w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border-2 transition-all duration-500
-                                    ${step === i ? 'bg-primary-600 text-white border-primary-400 shadow-xl shadow-primary-500/40 translate-y--1' :
-                                        step > i ? 'bg-green-500 text-white border-green-400' : 'bg-gray-100 text-gray-300 border-white'}
-                                `}
-                            >
-                                {step > i ? <CheckCircle size={16} /> : i}
-                            </motion.div>
-                        ))}
-                    </div>
-                    <div className="pr-6 pl-2 hidden sm:block">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current Phase</p>
-                        <p className="text-[11px] font-black text-indigo-950">Step 0{step} of 06</p>
-                    </div>
+                    ))}
                 </div>
             </div>
 
             {/* Header / Selection Info */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative mb-12 overflow-hidden rounded-[50px] premium-gradient p-12 flex flex-col lg:flex-row items-center justify-between gap-12 shadow-3xl"
-            >
-                <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
-                    <div className="absolute top-10 right-10 w-64 h-64 bg-white/20 rounded-full blur-3xl"></div>
-                    <div className="absolute bottom-10 left-10 w-96 h-96 bg-primary-400/20 rounded-full blur-3xl"></div>
-                </div>
-
-                <div className="flex-1 text-center lg:text-left">
-                    <div className="flex items-center justify-center lg:justify-start space-x-4 mb-6">
-                        <span className="px-5 py-2 bg-white/10 text-white border border-white/20 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-md">Phase_0{step}</span>
-                        <div className="h-px w-8 bg-white/20"></div>
-                        <span className="text-white/80 font-bold tracking-widest uppercase text-xs italic">Step Progress Registry</span>
+            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold uppercase tracking-wider">
+                            Step {step}
+                        </span>
+                        <h2 className="text-xl font-bold text-gray-800">
+                            {step === 1 && 'Select Destination'}
+                            {step === 2 && 'Select University'}
+                            {step === 3 && 'Select Level'}
+                            {step === 4 && 'Select Category'}
+                            {step === 5 && 'Select Specialization'}
+                            {step === 6 && (previewProgram ? 'Review Application' : 'Select Program')}
+                        </h2>
                     </div>
-                    <h2
-                        className="text-4xl md:text-5xl !text-white tracking-tight leading-tight mb-6"
-                        style={{ color: 'white' }}
-                    >
-                        {step === 1 && 'Define Destination'}
-                        {step === 2 && 'Institutional Alignment'}
-                        {step === 3 && 'Academic Tier Selection'}
-                        {step === 4 && 'Discipline Domain'}
-                        {step === 5 && 'Specialization Path'}
-                        {step === 6 && (previewProgram ? 'Review Application' : 'Final Selection')}
-                    </h2>
-                    <p className="text-white font-medium max-w-xl text-lg lg:text-base leading-relaxed opacity-90">
-                        {step === 1 && 'Select the sovereign nation where the student intends to maximize their academic potential.'}
-                        {step === 2 && `Browsing distinguished academic institutions currently operating in ${selections.country?.name}.`}
-                        {step === 3 && 'Specify the hierarchical level of the desired academic credential.'}
-                        {step === 4 && 'Isolate specific areas of study to refine the search for perfect-match programs.'}
-                        {step === 5 && 'Select the precise specialization to ensure career-aligned academic focus.'}
-                        {step === 6 && (previewProgram
-                            ? `Verify all details for ${student?.firstName} and the selected course before finalizing.`
-                            : `Choose the definitive program for ${student?.firstName} from the filtered results.`)}
+                    <p className="text-gray-500 text-sm">
+                        {step === 1 && 'Choose the country where the student wants to study.'}
+                        {step === 2 && `Browsing universities in ${selections.country?.name}.`}
+                        {step === 3 && 'Select the academic level.'}
+                        {step === 4 && 'Choose the field of study.'}
+                        {step === 5 && 'Select specific specialization.'}
+                        {step === 6 && (previewProgram ? 'Review details before submitting.' : 'Select the final program.')}
                     </p>
                 </div>
 
-                <div className="w-full lg:w-[400px] relative">
-                    <Search className="absolute left-7 top-1/2 -translate-y-1/2 text-white/30" size={24} />
+                <div className="w-full md:w-auto relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" size={18} />
                     <input
                         type="text"
-                        placeholder="Live Search Registry..."
+                        placeholder="Search..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-16 pr-8 py-7 bg-white/10 border border-white/5 rounded-[32px] text-white font-bold placeholder:text-white/20 focus:bg-white/15 focus:border-primary-500/50 transition-all outline-none backdrop-blur-xl text-lg shadow-2xl"
+                        className="w-full md:w-64 pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                     />
                 </div>
-            </motion.div>
+            </div>
 
             {/* Selection Grid */}
-            <div className="min-h-[500px] mb-32">
+            <div className="">
                 <AnimatePresence mode="wait">
                     {loading ? (
                         <motion.div
                             key="loader"
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center h-[500px] glass-card rounded-[60px] border-dashed border-2 border-gray-100"
+                            className="flex flex-col items-center justify-center h-[500px]"
                         >
-                            <div className="relative">
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                                    className="w-24 h-24 border-[6px] border-primary-100 border-t-primary-600 rounded-full"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Sparkles className="text-primary-600 animate-pulse" size={32} />
-                                </div>
-                            </div>
-                            <p className="mt-8 text-sm font-black uppercase tracking-[0.5em] text-gray-400">Synchronizing Data...</p>
+                            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+                            <p className="mt-4 text-sm font-medium text-gray-500">Loading options...</p>
                         </motion.div>
                     ) : (
                         <motion.div
@@ -590,18 +549,18 @@ const ProgramSelectionFlow = () => {
                                     ))}
 
                                     {filteredItems.length === 0 && (
-                                        <div className="col-span-full py-40 flex flex-col items-center text-center">
-                                            <div className="h-32 w-32 bg-gray-50 rounded-[40px] flex items-center justify-center text-gray-200 mb-8 border border-gray-100 shadow-inner rotate-3 transition-transform hover:rotate-6">
-                                                <Search size={48} />
+                                        <div className="col-span-full py-20 flex flex-col items-center text-center">
+                                            <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-6">
+                                                <Search size={32} />
                                             </div>
-                                            <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">Registry Search Failed</h3>
-                                            <p className="text-gray-400 font-medium max-w-xs mx-auto text-lg leading-relaxed">No active records match the current search filters. Try a broader search term.</p>
+                                            <h3 className="text-xl font-bold text-gray-900 mb-2">No Results Found</h3>
+                                            <p className="text-gray-500 max-w-xs mx-auto">No records match your search. Try a different keyword.</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 /* STEP 6: SIMPLIFIED PROFESSIONAL LAYOUT */
-                                <div className="max-w-[1400px] mx-auto">
+                                <div className="max-w-5xl mx-auto">
 
 
                                     {/* Main Content Area */}
@@ -790,56 +749,50 @@ const ProgramSelectionFlow = () => {
                                                         animate={{ opacity: 1, y: 0 }}
                                                         transition={{ delay: idx * 0.05 }}
                                                         onClick={() => setPreviewProgram(p)}
-                                                        className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-xl hover:shadow-2xl hover:border-primary-200 hover:scale-[1.01] transition-all duration-500 cursor-pointer group flex flex-col sm:flex-row items-center gap-8 relative overflow-hidden"
+                                                        className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group flex flex-col sm:flex-row items-center gap-6"
                                                     >
-                                                        <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-primary-50 group-hover:text-primary-500 transition-colors">
-                                                            <Sparkles size={24} />
+                                                        <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                                            <Sparkles size={20} />
                                                         </div>
 
                                                         <div className="flex-1 text-center sm:text-left">
-                                                            <h4 className="text-xl font-black text-indigo-950 mb-3 group-hover:text-primary-600 transition-colors leading-snug">
-                                                                {p.course_name || p.name || p.program_name || 'Untitled Course'}
+                                                            <h4 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">
+                                                                {p.course_name || p.name || p.program_name}
                                                             </h4>
-                                                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-8">
-                                                                <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest gap-2">
-                                                                    <Clock size={12} className="text-primary-500" />
-                                                                    {p.duration || 'N/A'}
-                                                                </div>
-                                                                <div className="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest gap-2">
-                                                                    <Star size={12} className="text-orange-500" />
-                                                                    {p.intake || 'Flexible'}
-                                                                </div>
+                                                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm text-gray-500">
+                                                                <span className="flex items-center gap-1"><Clock size={14} /> {p.duration || 'N/A'}</span>
+                                                                <span className="flex items-center gap-1"><Layers size={14} /> {p.tuition_fee || 'Variable'}</span>
+                                                                <span className="flex items-center gap-1"><BookOpen size={14} /> {p.study_mode || 'Full-time'}</span>
                                                             </div>
                                                         </div>
 
-                                                        <div className="h-14 px-8 rounded-2xl bg-gray-50 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-indigo-950 group-hover:bg-primary-600 group-hover:text-white transition-all shadow-sm">
-                                                            Analyze Setup
-                                                            <ArrowRight size={16} className="ml-3 group-hover:translate-x-1 transition-transform" />
+                                                        <div className="flex items-center justify-center h-10 w-10 rounded-full border border-gray-200 text-gray-300 group-hover:border-indigo-600 group-hover:text-indigo-600 transition-all">
+                                                            <ChevronRight size={20} />
                                                         </div>
                                                     </motion.div>
                                                 ))}
                                             </motion.div>
                                         ) : (
-                                            /* PHASE 3: EMPTY RESULTS - Refined for compact space */
+                                            /* PHASE 3: EMPTY RESULTS */
                                             <motion.div
                                                 key="empty"
                                                 initial={{ opacity: 0, scale: 0.95 }}
                                                 animate={{ opacity: 1, scale: 1 }}
-                                                className="flex flex-col items-center justify-center text-center bg-white rounded-[50px] border-2 border-dashed border-gray-100 p-20 py-32 shadow-xl"
+                                                className="py-20 flex flex-col items-center justify-center text-center"
                                             >
-                                                <div className="h-24 w-24 bg-gray-50 rounded-[35px] flex items-center justify-center text-gray-200 mb-8 border border-gray-100 rotate-3 transition-transform hover:rotate-6">
+                                                <div className="h-24 w-24 bg-gray-50 rounded-3xl flex items-center justify-center text-gray-300 mb-6 border border-gray-100 shadow-inner">
                                                     <Search size={40} />
                                                 </div>
-                                                <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">No Specific Programs Found</h3>
-                                                <p className="text-gray-400 font-medium max-w-md mx-auto text-lg leading-relaxed mb-10">
-                                                    No specific programs are listed for <span className="text-indigo-950 font-bold">{selections.university?.name}</span> + <span className="text-indigo-950 font-bold">{selections.level}</span>
-                                                    {selections.specialization && <> + <span className="text-indigo-950 font-bold">{selections.specialization.name || selections.specialization.specialization_name}</span></>}.
+                                                <h3 className="text-xl font-bold text-gray-900 mb-2">No Specific Programs Found</h3>
+                                                <p className="text-gray-500 font-medium max-w-md mx-auto leading-relaxed mb-8">
+                                                    No specific programs are listed for <span className="text-gray-900 font-bold">{selections.university?.name}</span> + <span className="text-gray-900 font-bold">{selections.level}</span>
+                                                    {selections.specialization && <> + <span className="text-gray-900 font-bold">{selections.specialization.name || selections.specialization.specialization_name}</span></>}.
                                                 </p>
                                                 <button
                                                     onClick={() => setStep(step - 1)}
-                                                    className="px-12 py-5 bg-gray-100 text-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-200 transition-all shadow-lg active:scale-95"
+                                                    className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-md active:scale-95"
                                                 >
-                                                    Apply for {selections.course_name}
+                                                    Go Back & Adjust Filters
                                                 </button>
                                             </motion.div>
                                         )}
@@ -851,31 +804,26 @@ const ProgramSelectionFlow = () => {
                 </AnimatePresence>
             </div>
 
-            {/* Premium Sticky Action Bar */}
+            {/* Simple Sticky Action Bar */}
             <AnimatePresence>
                 {step < 6 && !loading && (
                     <motion.div
                         initial={{ opacity: 0, y: 100 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 100 }}
-                        className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[95%] lg:w-[1200px] z-50"
+                        className="mt-8 w-full z-10"
                     >
-                        <div className="bg-white/90 backdrop-blur-3xl flex flex-col md:flex-row items-center justify-between p-6 lg:p-7 px-10 rounded-3xl shadow-2xl shadow-primary-900/10 border border-gray-100">
-                            <div className="hidden lg:flex items-center space-x-8">
-                                <div className="flex -space-x-4">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className={`h-10 w-10 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white ${i === 1 ? 'bg-indigo-400' : i === 2 ? 'bg-primary-500' : 'bg-blue-400'}`}>0{i}</div>
+                        <div className="bg-white flex flex-col md:flex-row items-center justify-between p-4 px-8 rounded-xl shadow-xl border border-gray-200">
+                            <div className="hidden lg:flex items-center space-x-6">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Progress</span>
+                                <div className="flex items-center gap-2">
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <div key={i} className={`h-2 w-8 rounded-full transition-colors ${step >= i ? 'bg-indigo-600' : 'bg-gray-200'}`} />
                                     ))}
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black text-primary-500 uppercase tracking-widest mb-0.5">Application Progress</p>
-                                    <p className="text-sm font-black text-indigo-950 uppercase tracking-widest">
-                                        {step < 3 ? 'Selection' : step < 5 ? 'Preferences' : 'Finalize'}
-                                    </p>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col md:flex-row items-center gap-10 w-full md:w-auto">
+                            <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
                                 {(
                                     (step === 1 && selections.country) ||
                                     (step === 2 && selections.university) ||
@@ -884,11 +832,8 @@ const ProgramSelectionFlow = () => {
                                     (step === 5 && selections.specialization)
                                 ) && (
                                         <div className="text-center md:text-right hidden sm:block">
-                                            <div className="inline-flex items-center space-x-2 mb-1">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-primary-500 animate-pulse"></div>
-                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Selection Locked</p>
-                                            </div>
-                                            <p className="text-lg font-black text-indigo-950 truncate max-w-[300px] tracking-tight">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-0.5">Selected</p>
+                                            <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">
                                                 {step === 1 ? selections.country.name :
                                                     step === 2 ? selections.university.name :
                                                         step === 3 ? selections.level :
@@ -907,21 +852,21 @@ const ProgramSelectionFlow = () => {
                                         (step === 4 && !selections.category)
                                     }
                                     className={`
-                                        group relative px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center shadow-lg active:scale-95 w-full md:w-auto justify-center
+                                        px-8 py-3 rounded-lg font-bold text-sm transition-all flex items-center shadow-md active:scale-95 w-full md:w-auto justify-center
                                         ${!((step === 1 && !selections.country) || (step === 2 && !selections.university) || (step === 3 && !selections.level) || (step === 4 && !selections.category))
-                                            ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-600/20'
-                                            : 'bg-gray-100 text-gray-300 border border-gray-100 cursor-not-allowed shadow-none'}
+                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}
                                     `}
                                 >
-                                    Proceed to Step 0{step + 1}
-                                    <ArrowRight size={22} className="ml-4 group-hover:translate-x-1 transition-transform" />
+                                    Next Step
+                                    <ArrowRight size={18} className="ml-2" />
                                 </button>
                             </div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div >
+        </div>
     );
 };
 

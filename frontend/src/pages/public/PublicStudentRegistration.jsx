@@ -1,15 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import studentService from '../../services/studentService';
 import { ArrowLeft, Save, ArrowRight, Check, User, GraduationCap, FileText, Info, UploadCloud } from 'lucide-react';
 import { useToast } from '../../components/ui/toast';
 import { getTempStudentId, saveTempStudentId, clearTempStudentId, getDaysUntilExpiry } from '../../utils/draftStorage';
 import EmailVerification from '../../components/EmailVerification';
 import DocumentUpload from '../../components/common/DocumentUpload';
+import SearchableSelect from '../../components/ui/SearchableSelect';
+import useCountries from '../../hooks/useCountries';
+import {
+    validateDate,
+    validateEmail,
+    validateMobile,
+    validateNumber,
+    validateRequired
+} from '../../utils/validation';
 
 const PublicStudentRegistration = () => {
     const navigate = useNavigate();
     const toast = useToast();
+    const { countries: countriesData, phoneCodes: phoneCode, loading: countriesLoading } = useCountries(); // Use global hook
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [resumingDraft, setResumingDraft] = useState(false);
@@ -62,13 +72,12 @@ const PublicStudentRegistration = () => {
         speaking_score: '',
         overall_score: '',
         // Step 4: Background
+        documents: [], // Array to store { documentType, documentUrl, documentName }
+        identity_type: 'Aadhaar', // Default value
+        identity_number: '',       // Initialize to empty string
         visa_refusal: '',
         study_permit: '',
-        background_details: '',
-        // Step 5: Documents & ID Proof
-        identity_type: '',
-        identity_number: '',
-        documents: [], // Array to store { documentType, documentUrl, documentName }
+        background_details: ''
     });
 
     // On component mount: Check for draft or referral
@@ -92,16 +101,15 @@ const PublicStudentRegistration = () => {
     }, []);
 
     // Fetch referral info to show who referred them
-    const fetchReferralInfo = async (referralId) => {
+    const fetchReferralInfo = async (refCode) => {
         try {
-            // TODO: Add API call to get referrer info
-            // const response = await axios.get(`/api/users/${referralId}`);
-            // setReferralInfo(response.data);
-
-            // For now, just set the ID
-            setReferralInfo({ id: referralId, name: 'Loading...', role: 'admin' });
+            const response = await studentService.validateReferral(refCode);
+            if (response.success) {
+                setReferralInfo(response.referrer);
+            }
         } catch (error) {
-            console.error('Failed to fetch referral info:', error);
+            console.error('Invalid referral:', error);
+            toast.error('Invalid or expired referral link');
         }
     };
 
@@ -109,13 +117,17 @@ const PublicStudentRegistration = () => {
     const resumeDraft = async (tempId) => {
         try {
             setResumingDraft(true);
-            const response = await axios.get(`http://localhost:5000/api/students/draft/${tempId}`, {
-                withCredentials: true
-            });
-            const { student } = response.data;
+            const response = await studentService.getDraft(tempId);
+            const { student } = response;
 
-            // Auto-fill form data
-            setFormData(student.formData);
+            // Auto-fill form data, ensuring no fields are undefined
+            setFormData(prev => ({
+                ...prev,
+                ...student.formData,
+                identity_type: student.formData.identity_type || 'Passport',
+                identity_number: student.formData.identity_number || '',
+                // Ensure other potential undefineds are handled if needed
+            }));
             setCurrentStep(student.currentStep);
 
             if (student.referredBy) {
@@ -133,23 +145,79 @@ const PublicStudentRegistration = () => {
         }
     };
 
+    const validateField = (name, value) => {
+        let error = '';
+        switch (name) {
+            case 'firstName':
+                error = validateRequired(value, 'First name');
+                break;
+            case 'lastName':
+                error = validateRequired(value, 'Last name');
+                break;
+            case 'email':
+                error = validateEmail(value);
+                break;
+            case 'mobile':
+                error = validateMobile(value);
+                break;
+            case 'dob':
+                error = validateDate(value, { past: true, label: 'Date of Birth' });
+                if (!error && value) {
+                    const year = new Date(value).getFullYear();
+                    if (year < 1900) error = 'Please enter a valid birth year';
+                }
+                break;
+            case 'passport_expiry':
+                if (value) {
+                    error = validateDate(value, { label: 'Passport' });
+                    if (!error) {
+                        const date = new Date(value);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        const sixMonthsFuture = new Date();
+                        sixMonthsFuture.setMonth(today.getMonth() + 6);
+                        sixMonthsFuture.setHours(0, 0, 0, 0);
+
+                        if (date < sixMonthsFuture) error = 'Passport must be valid for at least 6 months';
+                        if (date.getFullYear() > 2100) error = 'Please enter a realistic expiry year';
+                    }
+                }
+                break;
+            case 'exam_date':
+                if (value) {
+                    error = validateDate(value, { past: true, label: 'Exam date' });
+                    if (!error) {
+                        const year = new Date(value).getFullYear();
+                        if (year < 1990) error = 'Please enter a valid exam year (1990-Present)';
+                    }
+                }
+                break;
+            case 'listening_score':
+            case 'reading_score':
+            case 'writing_score':
+            case 'speaking_score':
+            case 'overall_score':
+                error = validateNumber(value, { positive: true, label: 'Score' });
+                break;
+            default:
+                break;
+        }
+        return error;
+    };
+
+
+
     const handleChange = (e) => {
         const { name, value } = e.target;
-
-        // Restrict score fields and grade average to positive numbers and decimals
-        if (['listening_score', 'reading_score', 'writing_score', 'speaking_score', 'overall_score', 'grade_average'].includes(name)) {
-            // Allow empty, or matching regex for partial decimal (e.g. "10.")
-            if (value !== '' && !/^\d*\.?\d*$/.test(value)) {
-                return;
-            }
-        }
-
         setFormData(prev => ({ ...prev, [name]: value }));
 
-        // Clear specific error when user types
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: '' }));
-        }
+        // Live Validation
+        const error = validateField(name, value);
+        setErrors(prev => ({
+            ...prev,
+            [name]: error
+        }));
     };
 
     // Validate current step before saving/proceeding
@@ -248,11 +316,6 @@ const PublicStudentRegistration = () => {
         }
 
         if (currentStep === 5) {
-            if (!formData.identity_type) setError('identity_type', 'ID Proof Type is required');
-            if (!formData.identity_number?.trim()) setError('identity_number', 'ID Number is required');
-
-
-
             // Document existence check (chk uploaded OR selected)
             const getDoc = (type) => {
                 const uploaded = formData.documents?.find(d => d.documentType === type);
@@ -296,7 +359,7 @@ const PublicStudentRegistration = () => {
 
             if (currentStep === 1 && !tempId) {
                 // First time saving Step 1 - create draft
-                const response = await axios.post('http://localhost:5000/api/students/draft/step1', {
+                const response = await studentService.saveDraftStep1({
                     firstName: formData.firstName,
                     lastName: formData.lastName,
                     email: formData.email,
@@ -317,18 +380,14 @@ const PublicStudentRegistration = () => {
                     state: formData.state,
                     country: formData.country,
                     zipcode: formData.zipcode,
-                }, {
-                    withCredentials: true
                 });
 
-                saveTempStudentId(response.data.tempStudentId);
+                saveTempStudentId(response.tempStudentId);
                 toast.success('Step 1 saved! You can resume anytime.');
             } else if (tempId) {
                 // Update existing draft
-                await axios.put(`http://localhost:5000/api/students/draft/${tempId}/step/${currentStep}`, {
+                await studentService.updateDraftStep(tempId, currentStep, {
                     stepData: formData
-                }, {
-                    withCredentials: true
                 });
 
                 toast.success(`Step ${currentStep} saved successfully!`);
@@ -383,11 +442,36 @@ const PublicStudentRegistration = () => {
             }
 
             // Set a default password or ask user for password
-            const response = await axios.post(`http://localhost:5000/api/students/draft/${tempId}/complete`, {
-                finalStepData: formData,
+            const sanitizedData = {
+                ...formData,
+                dateOfBirth: formData.dob || null,
+                passportExpiry: formData.passport_expiry || null,
+                examDate: formData.exam_date || null,
+                gender: formData.gender || null,
+                maritalStatus: formData.marital_status || 'Single',
+
+                // Add sanity checks for other optional fields
+                fatherName: formData.father || null,
+                motherName: formData.mother || null,
+                homeContactNumber: formData.home_contact_number || null,
+                referredBy: formData.referredBy || null,
+
+                listeningScore: formData.listening_score || null,
+                readingScore: formData.reading_score || null,
+                writingScore: formData.writing_score || null,
+                speakingScore: formData.speaking_score || null,
+                overallScore: formData.overall_score || null,
+
+                visaRefusal: formData.visa_refusal || null,
+                studyPermit: formData.study_permit || null,
+                backgroundDetails: formData.background_details || null,
+            };
+
+            console.log('Final Submission Data:', sanitizedData);
+
+            await studentService.completeRegistration(tempId, {
+                finalStepData: sanitizedData,
                 password: 'Student@123' // TODO: Let user set password
-            }, {
-                withCredentials: true
             });
 
             clearTempStudentId();
@@ -408,22 +492,6 @@ const PublicStudentRegistration = () => {
             setLoading(false);
         }
     };
-
-    // Static data
-    const countriesData = [
-        { code: 'IN', name: 'INDIA' },
-        { code: 'US', name: 'UNITED STATES' },
-        { code: 'GB', name: 'UNITED KINGDOM' },
-        { code: 'CA', name: 'CANADA' },
-        { code: 'AU', name: 'AUSTRALIA' },
-    ];
-
-    const phoneCode = [
-        { phonecode: '1' },
-        { phonecode: '44' },
-        { phonecode: '61' },
-        { phonecode: '91' },
-    ];
 
     const steps = [
         { number: 1, title: 'Personal Info', icon: User },
@@ -464,31 +532,38 @@ const PublicStudentRegistration = () => {
         }
     };
 
+    // Upload all selected documents
     const uploadAllDocuments = async (tempId) => {
         try {
             setUploadingFiles(true);
-            const formDataUpload = new FormData();
+            // Upload sequentially to avoid race conditions on the backend (VersionError)
+            const results = [];
+            for (const [docType, file] of Object.entries(selectedFiles)) {
+                const formData = new FormData();
+                formData.append('documentType', docType);
+                formData.append('file', file);
 
-            Object.entries(selectedFiles).forEach(([type, file]) => {
-                formDataUpload.append(type, file);
-            });
+                try {
+                    const result = await studentService.uploadDraftDocument(tempId, formData);
+                    results.push(result);
+                } catch (err) {
+                    console.error(`Failed to upload ${docType}:`, err);
+                    results.push({ success: false, error: err });
+                }
+            }
 
-            const response = await axios.post(`http://localhost:5000/api/students/draft/${tempId}/upload-batch`, formDataUpload, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-                withCredentials: true
-            });
+            // Check if all uploads were successful and update formData
+            const allSuccess = results.every(result => result && result.success);
 
-            if (response.data.success) {
-                // Update formData with the returned documents
+            if (allSuccess) {
                 setFormData(prev => {
-                    // For each uploaded doc, remove old and add new
                     let updatedDocs = [...(prev.documents || [])];
-
-                    response.data.documents.forEach(doc => {
-                        updatedDocs = updatedDocs.filter(d => d.documentType !== doc.documentType);
-                        updatedDocs.push(doc);
+                    results.forEach(result => {
+                        if (result && result.document) {
+                            updatedDocs = updatedDocs.filter(d => d.documentType !== result.document.documentType);
+                            updatedDocs.push(result.document);
+                        }
                     });
-
                     return { ...prev, documents: updatedDocs };
                 });
 
@@ -523,11 +598,11 @@ const PublicStudentRegistration = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8 px-4">
+        <div className="p-4 md:p-8 bg-gradient-to-br from-indigo-50 via-white to-blue-50 min-h-screen">
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-indigo-900 mb-2">Student Registration</h1>
+                <div className="mb-6 md:mb-8 text-center md:text-left">
+                    <h1 className="text-3xl font-bold text-indigo-900 mb-2">Student Registration</h1>
                     <p className="text-gray-600">Complete your profile to get started</p>
                 </div>
 
@@ -547,26 +622,26 @@ const PublicStudentRegistration = () => {
                 )}
 
                 {/* Progress Steps */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                    <div className="flex items-center justify-between">
+                <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6 overflow-x-auto">
+                    <div className="flex items-center justify-between min-w-[300px] md:min-w-0">
                         {steps.map((step, index) => (
                             <React.Fragment key={step.number}>
-                                <div className="flex flex-col items-center">
-                                    <div className={`w-14 h-14 rounded-full flex items-center justify-center font-semibold transition-all ${currentStep > step.number
+                                <div className="flex flex-col items-center min-w-[60px]">
+                                    <div className={`w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center font-semibold transition-all ${currentStep > step.number
                                         ? 'bg-green-500 text-white'
                                         : currentStep === step.number
-                                            ? 'bg-indigo-600 text-white ring-4 ring-indigo-200'
+                                            ? 'bg-indigo-600 text-white ring-2 md:ring-4 ring-indigo-200'
                                             : 'bg-gray-200 text-gray-500'
                                         }`}>
-                                        {currentStep > step.number ? <Check size={24} /> : <step.icon size={24} />}
+                                        {currentStep > step.number ? <Check size={20} /> : <step.icon size={20} />}
                                     </div>
-                                    <span className={`text-sm mt-2 font-medium ${currentStep === step.number ? 'text-indigo-600' : 'text-gray-500'
+                                    <span className={`text-xs md:text-sm mt-2 font-medium whitespace-nowrap ${currentStep === step.number ? 'text-indigo-600' : 'text-gray-500'
                                         }`}>
                                         {step.title}
                                     </span>
                                 </div>
                                 {index < steps.length - 1 && (
-                                    <div className={`flex-1 h-1 mx-4 rounded transition-all ${currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
+                                    <div className={`flex-1 h-1 mx-2 rounded transition-all ${currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
                                         }`} />
                                 )}
                             </React.Fragment>
@@ -579,334 +654,334 @@ const PublicStudentRegistration = () => {
                     {/* Step 1: Personal Information */}
                     {currentStep === 1 && (
                         <div ref={generalRef}>
-                            <div className="mb-6">
-                                <h3 className="text-2xl font-semibold text-indigo-700 flex items-center gap-2">
-                                    <User size={28} />
-                                    Personal Information
-                                </h3>
-                                <p className="text-gray-500 text-sm mt-1">Fill in your personal and passport details</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* First Name */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        First Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="firstName"
-                                        placeholder="Enter first name"
-                                        value={formData.firstName}
-                                        onChange={handleChange}
-                                        required
-                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.firstName ? 'border-red-500' : 'border-gray-300'}`}
-                                    />
-                                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+                            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-6">
+                                <div className="mb-6">
+                                    <h3 className="text-xl font-semibold text-indigo-700 flex items-center gap-2">
+                                        <User size={24} />
+                                        Personal Information
+                                    </h3>
+                                    <p className="text-gray-500 text-sm mt-1">Fill in your personal and passport details</p>
                                 </div>
 
-                                {/* Last Name */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Last Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="lastName"
-                                        placeholder="Enter last name"
-                                        value={formData.lastName}
-                                        onChange={handleChange}
-                                        required
-                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.lastName ? 'border-red-500' : 'border-gray-300'}`}
-                                    />
-                                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
-                                </div>
-
-                                {/* Email */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Email Address <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        placeholder="student@example.com"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        required
-                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-                                    />
-                                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                                </div>
-
-                                {/* Mobile Number */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Mobile Number <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="flex">
-                                        <select
-                                            name="c_code"
-                                            value={formData.c_code}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                    {/* First Name */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            First Name <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="firstName"
+                                            placeholder="Enter first name"
+                                            value={formData.firstName}
                                             onChange={handleChange}
-                                            className="border border-gray-300 rounded-l-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.firstName ? 'border-red-500' : 'border-gray-300'}`}
+                                        />
+                                        {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+                                    </div>
+
+                                    {/* Last Name */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Last Name <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="lastName"
+                                            placeholder="Enter last name"
+                                            value={formData.lastName}
+                                            onChange={handleChange}
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.lastName ? 'border-red-500' : 'border-gray-300'}`}
+                                        />
+                                        {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+                                    </div>
+
+                                    {/* Email */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Email Address <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            placeholder="student@example.com"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+                                        />
+                                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                                    </div>
+
+                                    {/* Mobile Number */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Mobile Number <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <div className="w-[110px] md:w-[140px]">
+                                                <SearchableSelect
+                                                    options={phoneCode.map(c => ({ label: `+${c.phonecode}`, value: c.phonecode }))}
+                                                    value={formData.c_code}
+                                                    onChange={(val) => handleChange({ target: { name: 'c_code', value: val } })}
+                                                    placeholder="+91"
+                                                    searchPlaceholder="Search code..."
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <input
+                                                    type="tel"
+                                                    name="mobile"
+                                                    placeholder="Enter mobile number"
+                                                    value={formData.mobile}
+                                                    onChange={handleChange}
+                                                    className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.mobile ? 'border-red-500' : 'border-gray-300'
+                                                        }`}
+                                                />
+                                            </div>
+                                        </div>
+                                        {errors.mobile && <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>}
+                                    </div>
+
+                                    {/* Father Name */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Father's Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="father"
+                                            placeholder="Enter father's name"
+                                            value={formData.father}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                    </div>
+
+                                    {/* Mother Name */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Mother's Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="mother"
+                                            placeholder="Enter mother's name"
+                                            value={formData.mother}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                    </div>
+
+                                    {/* Date of Birth */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Date of Birth
+                                        </label>
+                                        <input
+                                            type="date"
+                                            max="9999-12-31"
+                                            name="dob"
+                                            value={formData.dob}
+                                            onChange={handleChange}
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.dob ? 'border-red-500' : 'border-gray-300'}`}
+                                        />
+                                        {errors.dob && <p className="text-red-500 text-xs mt-1">{errors.dob}</p>}
+                                    </div>
+
+                                    {/* First Language */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            First Language
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="first_language"
+                                            placeholder="e.g., English, Hindi"
+                                            value={formData.first_language}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                    </div>
+
+                                    {/* Nationality */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Country of Citizenship
+                                        </label>
+                                        <select
+                                            name="nationality"
+                                            value={formData.nationality}
+                                            onChange={handleChange}
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.nationality ? 'border-red-500' : 'border-gray-300'}`}
                                         >
-                                            {phoneCode.map((code, idx) => (
-                                                <option key={idx} value={code.phonecode}>
-                                                    +{code.phonecode}
+                                            <option value="">Select country</option>
+                                            {countriesData.map((country) => (
+                                                <option key={country.code} value={country.name}>
+                                                    {country.name}
                                                 </option>
                                             ))}
                                         </select>
+                                    </div>
+
+                                    {/* Passport Number */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Passport Number
+                                        </label>
                                         <input
                                             type="text"
-                                            name="mobile"
-                                            placeholder="Enter mobile number"
-                                            value={formData.mobile}
+                                            name="passport_number"
+                                            placeholder="Enter passport number"
+                                            value={formData.passport_number}
                                             onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                         />
                                     </div>
-                                    {errors.mobile && <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>}
+
+                                    {/* Passport Expiry */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Passport Expiry Date
+                                        </label>
+                                        <input
+                                            type="date"
+                                            max="9999-12-31"
+                                            name="passport_expiry"
+                                            value={formData.passport_expiry}
+                                            onChange={handleChange}
+                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.passport_expiry ? 'border-red-500' : 'border-gray-300'}`}
+                                        />
+                                        {errors.passport_expiry && <p className="text-red-500 text-xs mt-1">{errors.passport_expiry}</p>}
+                                    </div>
+
+                                    {/* Marital Status */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Marital Status
+                                        </label>
+                                        <select
+                                            name="marital_status"
+                                            value={formData.marital_status}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        >
+                                            <option value="Single">Single</option>
+                                            <option value="Married">Married</option>
+                                            <option value="Divorced">Divorced</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Gender */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Gender
+                                        </label>
+                                        <select
+                                            name="gender"
+                                            value={formData.gender}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        >
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Address Section */}
+                                    <div className="col-span-1 md:col-span-2">
+                                        <h4 className="text-lg font-semibold text-gray-800 mb-4">Address Details</h4>
+                                    </div>
+
+                                    {/* Home Address */}
+                                    <div className="col-span-1 md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Home Address
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="home_address"
+                                            placeholder="Enter complete address"
+                                            value={formData.home_address}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                    </div>
+
+                                    {/* City */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            City
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="city"
+                                            placeholder="Enter city"
+                                            value={formData.city}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                    </div>
+
+                                    {/* State */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            State/Province
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="state"
+                                            placeholder="Enter state"
+                                            value={formData.state}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                    </div>
+
+                                    {/* Country */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Country
+                                        </label>
+                                        <select
+                                            name="country"
+                                            value={formData.country}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        >
+                                            <option value="">Select country</option>
+                                            {countriesData.map((country) => (
+                                                <option key={country.code} value={country.name}>
+                                                    {country.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Zipcode */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Postal/Zip Code
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="zipcode"
+                                            placeholder="Enter postal code"
+                                            value={formData.zipcode}
+                                            onChange={handleChange}
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                    </div>
                                 </div>
 
-                                {/* Father Name */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Father's Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="father"
-                                        placeholder="Enter father's name"
-                                        value={formData.father}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                {/* NEW: Email Verification Component */}
+                                {formData.email && (
+                                    <EmailVerification
+                                        email={formData.email}
+                                        onVerified={() => setEmailVerified(true)}
                                     />
-                                </div>
-
-                                {/* Mother Name */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Mother's Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="mother"
-                                        placeholder="Enter mother's name"
-                                        value={formData.mother}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    />
-                                </div>
-
-                                {/* Date of Birth */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Date of Birth
-                                    </label>
-                                    <input
-                                        type="date"
-                                        max="9999-12-31"
-                                        name="dob"
-                                        value={formData.dob}
-                                        onChange={handleChange}
-                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.dob ? 'border-red-500' : 'border-gray-300'}`}
-                                    />
-                                    {errors.dob && <p className="text-red-500 text-xs mt-1">{errors.dob}</p>}
-                                </div>
-
-                                {/* First Language */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        First Language
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="first_language"
-                                        placeholder="e.g., English, Hindi"
-                                        value={formData.first_language}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    />
-                                </div>
-
-                                {/* Nationality */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Country of Citizenship
-                                    </label>
-                                    <select
-                                        name="nationality"
-                                        value={formData.nationality}
-                                        onChange={handleChange}
-                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.nationality ? 'border-red-500' : 'border-gray-300'}`}
-                                    >
-                                        <option value="">Select country</option>
-                                        {countriesData.map((country) => (
-                                            <option key={country.code} value={country.name}>
-                                                {country.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {/* Passport Number */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Passport Number
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="passport_number"
-                                        placeholder="Enter passport number"
-                                        value={formData.passport_number}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    />
-                                </div>
-
-                                {/* Passport Expiry */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Passport Expiry Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        max="9999-12-31"
-                                        name="passport_expiry"
-                                        value={formData.passport_expiry}
-                                        onChange={handleChange}
-                                        className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition ${errors.passport_expiry ? 'border-red-500' : 'border-gray-300'}`}
-                                    />
-                                    {errors.passport_expiry && <p className="text-red-500 text-xs mt-1">{errors.passport_expiry}</p>}
-                                </div>
-
-                                {/* Marital Status */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Marital Status
-                                    </label>
-                                    <select
-                                        name="marital_status"
-                                        value={formData.marital_status}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    >
-                                        <option value="Single">Single</option>
-                                        <option value="Married">Married</option>
-                                        <option value="Divorced">Divorced</option>
-                                    </select>
-                                </div>
-
-                                {/* Gender */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Gender
-                                    </label>
-                                    <select
-                                        name="gender"
-                                        value={formData.gender}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    >
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-
-                                {/* Address Section */}
-                                <div className="col-span-2">
-                                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Address Details</h4>
-                                </div>
-
-                                {/* Home Address */}
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Home Address
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="home_address"
-                                        placeholder="Enter complete address"
-                                        value={formData.home_address}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    />
-                                </div>
-
-                                {/* City */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        City
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="city"
-                                        placeholder="Enter city"
-                                        value={formData.city}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    />
-                                </div>
-
-                                {/* State */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        State/Province
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="state"
-                                        placeholder="Enter state"
-                                        value={formData.state}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    />
-                                </div>
-
-                                {/* Country */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Country
-                                    </label>
-                                    <select
-                                        name="country"
-                                        value={formData.country}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    >
-                                        <option value="">Select country</option>
-                                        {countriesData.map((country) => (
-                                            <option key={country.code} value={country.name}>
-                                                {country.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {/* Zipcode */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Postal/Zip Code
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="zipcode"
-                                        placeholder="Enter postal code"
-                                        value={formData.zipcode}
-                                        onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    />
-                                </div>
+                                )}
                             </div>
-
-                            {/* NEW: Email Verification Component */}
-                            {formData.email && (
-                                <EmailVerification
-                                    email={formData.email}
-                                    onVerified={() => setEmailVerified(true)}
-                                />
-                            )}
                         </div>
                     )}
 
@@ -1192,44 +1267,7 @@ const PublicStudentRegistration = () => {
                                 <p className="text-gray-500 text-sm mt-1">Upload required documents and ID proof</p>
                             </div>
 
-                            {/* ID Details Section */}
-                            <div className="bg-indigo-50 rounded-xl p-6 mb-8 border border-indigo-100">
-                                <h4 className="text-lg font-semibold text-indigo-900 mb-4">Identity Proof Details</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            ID Proof Type <span className="text-red-500">*</span>
-                                        </label>
-                                        <select
-                                            name="identity_type"
-                                            value={formData.identity_type}
-                                            onChange={handleChange}
-                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white ${errors.identity_type ? 'border-red-500' : 'border-gray-300'}`}
-                                        >
-                                            <option value="">Select ID Type</option>
-                                            <option value="Aadhaar">Aadhaar Card</option>
-                                            <option value="PAN">PAN Card</option>
-                                            <option value="Passport">Passport</option>
-                                            <option value="Driving License">Driving License</option>
-                                        </select>
-                                        {errors.identity_type && <p className="text-red-500 text-xs mt-1">{errors.identity_type}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            ID Number <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="identity_number"
-                                            placeholder="Enter ID number"
-                                            value={formData.identity_number}
-                                            onChange={handleChange}
-                                            className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition ${errors.identity_number ? 'border-red-500' : 'border-gray-300'}`}
-                                        />
-                                        {errors.identity_number && <p className="text-red-500 text-xs mt-1">{errors.identity_number}</p>}
-                                    </div>
-                                </div>
-                            </div>
+                            {/* ID Details Section Removed */}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {/* Student Photo */}

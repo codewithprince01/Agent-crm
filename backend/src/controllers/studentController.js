@@ -1,10 +1,11 @@
 const Student = require('../models/Student');
 const Agent = require('../models/Agent');
 const User = require('../models/User');
-const Application = require('../models/Application'); // Added Application model
+const Application = require('../models/Application');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const { moveFileToEntityFolder, sanitize } = require('../services/storageService');
 const AuditService = require('../services/auditService');
 
 class StudentController {
@@ -231,7 +232,6 @@ class StudentController {
       // Resolve referrer name for single student
       const referrerMap = await StudentController.resolveReferrerNames([student.referredBy]);
       const refInfo = student.referredBy ? referrerMap[student.referredBy.toString()] : null;
-
       // Fetch applications for this student
       const applications = await Application.find({ studentId: id }).sort({ createdAt: -1 });
 
@@ -240,6 +240,7 @@ class StudentController {
         data: {
           student: {
             ...student.toObject({ getters: true, virtuals: true }),
+            documents: Object.fromEntries(student.documents || new Map()),
             referredByName: refInfo ? refInfo.name : (student.referredBy ? 'Unknown' : 'Direct'),
             referredByRole: refInfo ? refInfo.role : (student.referredBy ? 'N/A' : 'Direct'),
             applications // Include applications in the response
@@ -283,7 +284,10 @@ class StudentController {
       return res.status(200).json({
         success: true,
         data: {
-          student: studentData
+          student: {
+            ...studentData,
+            documents: Object.fromEntries(student.documents || new Map())
+          }
         }
       });
     } catch (error) {
@@ -388,6 +392,72 @@ class StudentController {
         }
       }
 
+      // Delete student documents folder
+      // Delete student documents folder
+      const fs = require('fs');
+      const path = require('path');
+      // sanitize is imported at the top of the file
+
+      try {
+        const baseUploadPath = 'uploads/documents/students';
+        let deleted = false;
+
+        // 1. Try Standardized Name_Email format (New Standard)
+        if (student.email) {
+          const entityName = sanitize(student.firstName + ' ' + student.lastName);
+          const safeEmail = sanitize(student.email);
+          const emailFolder = `${entityName}_${safeEmail}`;
+          const emailPath = path.join(process.cwd(), baseUploadPath, emailFolder);
+
+          if (fs.existsSync(emailPath)) {
+            fs.rmSync(emailPath, { recursive: true, force: true });
+            console.log(`Deleted folder (Email): ${emailPath}`);
+            deleted = true;
+          }
+
+          // Also try "Simple Replace" format (Legacy/Mixed)
+          // Some controllers might have used simple replace instead of sanitize
+          if (!deleted) {
+            const simpleSafeName = `${student.firstName}_${student.lastName}`.replace(/[^a-zA-Z0-9]/g, '_');
+            const simpleSafeEmail = student.email.replace(/[^a-zA-Z0-9]/g, '_');
+            const simpleEmailFolder = `${simpleSafeName}_${simpleSafeEmail}`;
+            const simpleEmailPath = path.join(process.cwd(), baseUploadPath, simpleEmailFolder);
+            if (fs.existsSync(simpleEmailPath)) {
+              fs.rmSync(simpleEmailPath, { recursive: true, force: true });
+              console.log(`Deleted folder (Simple Email): ${simpleEmailPath}`);
+              deleted = true;
+            }
+          }
+        }
+
+        // 2. Legacy: TempId (Public Drafts)
+        if (!deleted && student.tempStudentId) {
+          const safeName = `${student.firstName}_${student.lastName}`.replace(/[^a-zA-Z0-9]/g, '_');
+          const tempFolder = `${safeName}_${student.tempStudentId}`;
+          const tempFullPath = path.join(process.cwd(), baseUploadPath, tempFolder);
+          if (fs.existsSync(tempFullPath)) {
+            fs.rmSync(tempFullPath, { recursive: true, force: true });
+            console.log(`Deleted temp folder: ${tempFullPath}`);
+            deleted = true;
+          }
+        }
+
+        // 3. Legacy: MongoDB ID (Old Manual Uploads)
+        if (!deleted) {
+          const entityName = sanitize(student.firstName + ' ' + student.lastName);
+          const entityId = student._id.toString();
+          const idFolder = `${entityName}_${entityId}`;
+          const idFullPath = path.join(process.cwd(), baseUploadPath, idFolder);
+          if (fs.existsSync(idFullPath)) {
+            fs.rmSync(idFullPath, { recursive: true, force: true });
+            console.log(`Deleted ID folder: ${idFullPath}`);
+          }
+        }
+
+      } catch (err) {
+        console.error('Error deleting student document folder:', err);
+      }
+
       await Student.findByIdAndDelete(id);
 
       // Log audit
@@ -428,11 +498,31 @@ class StudentController {
         nationality,
         passportNumber,
         passportExpiry,
+        maritalStatus,
         address,
         city,
+        state,
         country,
         postalCode,
-        referredBy
+        homeContactNumber,
+        referredBy,
+        // Education
+        educationCountry,
+        highestLevel,
+        gradingScheme,
+        gradeAverage,
+        // Test Scores
+        examType,
+        examDate,
+        listeningScore,
+        readingScore,
+        writingScore,
+        speakingScore,
+        overallScore,
+        // Background
+        visaRefusal,
+        studyPermit,
+        backgroundDetails
       } = req.body;
 
       // Check if email exists
@@ -473,16 +563,34 @@ class StudentController {
         nationality,
         passportNumber,
         passportExpiry,
+        maritalStatus,
         address,
         city,
+        state,
         country,
         postalCode,
+        homeContactNumber,
         referredBy: req.userRole === 'AGENT' ? req.userId : (referredBy || null),
         agentId: req.userRole === 'AGENT' ? req.userId : (referredBy || null), // Set both for consistency
         isCompleted: true, // Manual creation is always completed
         isDraft: false,
         isEmailVerified: true, // Admin created students don't need email verification
-        emailVerifiedAt: new Date()
+        emailVerifiedAt: new Date(),
+        // New Fields
+        educationCountry,
+        highestLevel,
+        gradingScheme,
+        gradeAverage,
+        examType,
+        examDate,
+        listeningScore,
+        readingScore,
+        writingScore,
+        speakingScore,
+        overallScore,
+        visaRefusal,
+        studyPermit,
+        backgroundDetails
       });
 
       await student.save();
@@ -585,60 +693,55 @@ class StudentController {
   static async uploadDocument(req, res) {
     try {
       const { id } = req.params;
-      const { document_type } = req.body;
+      const documentName = (req.body.documentName || '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
       const file = req.file;
 
       if (!file) {
-        return res.status(400).json({
-          success: false,
-          message: 'No file uploaded'
-        });
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
       }
 
       const student = await Student.findById(id);
       if (!student) {
-        return res.status(404).json({
-          success: false,
-          message: 'Student not found'
-        });
+        if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        return res.status(404).json({ success: false, message: 'Student not found' });
       }
 
-      // Authorization check: Agents can only upload for their own students
+      // Authorization check (same as before)
       if (req.userRole === 'AGENT') {
         const agentIdString = req.userId.toString();
         const isOwner = student.referredBy?.toString() === agentIdString ||
           student.agentId?.toString() === agentIdString;
 
         if (!isOwner) {
-          return res.status(403).json({
-            success: false,
-            message: 'Unauthorized: You can only upload documents for students you referred'
-          });
+          if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
       }
 
-      // Add document to student's documents array
-      const documentUrl = `/uploads/documents/${file.filename}`;
-      student.documents.push({
-        documentType: document_type,
-        documentName: file.originalname,
-        documentUrl: documentUrl,
-        verified: false
-      });
+      // 1. Handle Overwrite: Delete old file if exists
+      if (student.documents && student.documents.has(documentName)) {
+        const oldRelativePath = student.documents.get(documentName);
+        const oldFullPath = path.join(process.cwd(), oldRelativePath);
+        try {
+          if (fs.existsSync(oldFullPath)) fs.unlinkSync(oldFullPath);
+        } catch (err) {
+          console.error('Failed to delete old file:', err);
+        }
+      }
 
+      // 2. Clear potential duplicate logic:
+      // We already handle overwrite by deleting student.documents.get(documentName) path above.
+      // This works even if the old path was in a dated folder and the new one is not.
+
+      const relativePath = moveFileToEntityFolder(file, student, documentName, 'students');
+
+      if (!student.documents) student.documents = new Map();
+      student.documents.set(documentName, relativePath);
+      student.markModified('documents');
       await student.save();
 
       // Log audit
-      await AuditService.log({
-        action: 'UPDATE', // Or CREATE for doc? Let's use UPDATE as it's an array push
-        entityType: 'Student',
-        entityId: id,
-        description: `Document uploaded: ${document_type}`,
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-        ...(req.userRole === 'AGENT' ? { agentId: req.userId, agentName: req.user.name } : { userId: req.userId, userName: req.user.name }),
-        userRole: req.userRole
-      });
+      await AuditService.logUpdate(req.user, 'Student', id, { action: 'upload_document', document: documentName }, {}, req);
 
       console.log('Document uploaded for student:', id);
 
@@ -646,10 +749,11 @@ class StudentController {
         success: true,
         message: 'Document uploaded successfully',
         data: {
+          student,
+          documents: Object.fromEntries(student.documents),
           document: {
-            documentType: document_type,
-            documentName: file.originalname,
-            documentUrl: documentUrl,
+            documentName: documentName,
+            documentUrl: relativePath,
             verified: false
           }
         }
@@ -670,52 +774,46 @@ class StudentController {
    */
   static async uploadMyDocument(req, res) {
     try {
-      const { document_type } = req.body;
+      const documentName = (req.body.documentName || '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
       const file = req.file;
 
       if (!file) {
-        return res.status(400).json({
-          success: false,
-          message: 'No file uploaded'
-        });
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
       }
 
-      // req.user is the logged-in student from authMiddleware
-      const student = await Student.findById(req.user._id);
-
+      const student = await Student.findById(req.userId);
       if (!student) {
-        return res.status(404).json({
-          success: false,
-          message: 'Student not found'
-        });
+        if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        return res.status(404).json({ success: false, message: 'Student not found' });
       }
 
-      // Add document to student's documents array
-      // Correct path: /upload/student/documents/filename
-      const documentUrl = `/upload/student/documents/${file.filename}`;
-      student.documents.push({
-        documentType: document_type,
-        documentName: file.originalname,
-        documentUrl: documentUrl,
-        verified: false
-      });
+      // 1. Handle Overwrite
+      if (student.documents && student.documents.has(documentName)) {
+        const oldRelativePath = student.documents.get(documentName);
+        const oldFullPath = path.join(process.cwd(), oldRelativePath);
+        try { if (fs.existsSync(oldFullPath)) fs.unlinkSync(oldFullPath); } catch (e) { }
+      }
 
+      const relativePath = moveFileToEntityFolder(file, student, documentName, 'students');
+
+      if (!student.documents) student.documents = new Map();
+      student.documents.set(documentName, relativePath);
+      student.markModified('documents');
       await student.save();
 
-      console.log('Document uploaded by student:', student._id);
+      // Log audit
+      await AuditService.logUpdate(student, 'Student', student._id, { action: 'upload_document_by_student', document: documentName }, {}, req);
 
       return res.status(201).json({
         success: true,
         message: 'Document uploaded successfully',
         data: {
-          document: {
-            documentType: document_type,
-            documentName: file.originalname,
-            documentUrl: documentUrl,
-            verified: false
-          }
+          student,
+          documents: Object.fromEntries(student.documents)
         }
       });
+
+      console.log('Document uploaded by student:', student._id);
     } catch (error) {
       console.error('Upload my document error:', error);
       return res.status(500).json({
@@ -728,128 +826,163 @@ class StudentController {
 
   /**
    * Delete student document
-   * DELETE /api/students/:id/documents/:documentId
+   * DELETE /api/students/:id/documents/:documentName
    */
   static async deleteDocument(req, res) {
     try {
-      const { id, documentId } = req.params;
+      const { id, documentName } = req.params;
 
       const student = await Student.findById(id);
       if (!student) {
-        return res.status(404).json({
-          success: false,
-          message: 'Student not found'
-        });
+        return res.status(404).json({ success: false, message: 'Student not found' });
       }
 
-      // Find the document
-      const documentIndex = student.documents.findIndex(doc => doc._id.toString() === documentId);
+      // Authorization check
+      if (req.userRole === 'AGENT') {
+        const agentIdString = req.userId.toString();
+        const isOwner = student.referredBy?.toString() === agentIdString ||
+          student.agentId?.toString() === agentIdString;
 
-      if (documentIndex === -1) {
-        return res.status(404).json({
-          success: false,
-          message: 'Document not found'
-        });
+        if (!isOwner) {
+          return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
       }
 
-      const document = student.documents[documentIndex];
+      if (!student.documents || !student.documents.get(documentName)) {
+        return res.status(404).json({ success: false, message: 'Document not found' });
+      }
 
-      // Remove from array or use pull
-      student.documents.splice(documentIndex, 1);
+      const filePath = student.documents.get(documentName);
+      try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (err) {
+        console.error('File delete error:', err);
+      }
+
+      student.documents.delete(documentName);
+      student.markModified('documents');
       await student.save();
 
-      // Delete file from filesystem
-      if (document.documentUrl) {
-        // Adjust path resolution based on your project structure
-        // documentUrl is like '/uploads/documents/filename.ext'
-        // We need to resolve it relative to the backend root or public dir
-        // Assuming 'upload' folder is in the root of backend
-        const filePath = path.join(__dirname, '../../', document.documentUrl);
+      // Log audit
+      await AuditService.logUpdate(req.user, 'Student', id, { action: 'delete_document', document: documentName }, {}, req);
 
-        fs.unlink(filePath, (err) => {
-          if (err) console.error('Error deleting file:', err);
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: 'Document deleted successfully'
-      });
+      return res.status(200).json({ success: true, message: 'Document deleted successfully', data: { documents: student.documents } });
     } catch (error) {
       console.error('Delete document error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to delete document',
-        error: error.message
-      });
+      return res.status(500).json({ success: false, message: 'Failed to delete document', error: error.message });
     }
   }
   /**
    * Delete current student's own document
-   * DELETE /api/students/me/documents/:documentId
+   * DELETE /api/students/me/documents/:documentName
    */
   static async deleteMyDocument(req, res) {
     try {
-      const { documentId } = req.params;
-      const studentId = req.user._id;
+      const { documentName } = req.params;
+      const studentId = req.userId;
 
       const student = await Student.findById(studentId);
       if (!student) {
-        return res.status(404).json({
-          success: false,
-          message: 'Student not found'
-        });
+        return res.status(404).json({ success: false, message: 'Student not found' });
       }
 
-      // Find the document
-      const documentIndex = student.documents.findIndex(doc => doc._id.toString() === documentId);
-
-      if (documentIndex === -1) {
-        return res.status(404).json({
-          success: false,
-          message: 'Document not found'
-        });
+      if (!student.documents || !student.documents.get(documentName)) {
+        return res.status(404).json({ success: false, message: 'Document not found' });
       }
 
-      const document = student.documents[documentIndex];
+      const filePath = student.documents.get(documentName);
+      try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (err) {
+        console.error('File delete error:', err);
+      }
 
-      // Remove from array or use pull
-      student.documents.splice(documentIndex, 1);
+      student.documents.delete(documentName);
+      student.markModified('documents');
       await student.save();
 
-      // Delete file from filesystem
-      if (document.documentUrl) {
-        // Robust deletion: check raw filename in standard location or use stored URL
-        const filename = path.basename(document.documentUrl);
+      return res.status(200).json({ success: true, message: 'Document deleted successfully', data: { documents: student.documents } });
+    } catch (error) {
+      console.error('Delete my document error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to delete document', error: error.message });
+    }
+  }
 
-        // Try standard location first (fixes legacy wrong URLs)
-        let filePath = path.join(__dirname, '../../upload/student/documents', filename);
+  /**
+   * Upload multiple student documents
+   * POST /api/students/:id/documents/bulk
+   */
+  static async uploadBulkDocuments(req, res) {
+    try {
+      const { id } = req.params;
+      const files = req.files;
 
-        if (!fs.existsSync(filePath)) {
-          // Fallback to stored URL path
-          filePath = path.join(__dirname, '../../', document.documentUrl);
-        }
+      if (!files || Object.keys(files).length === 0) {
+        return res.status(400).json({ success: false, message: 'No files uploaded' });
+      }
 
-        if (fs.existsSync(filePath)) {
-          fs.unlink(filePath, (err) => {
-            if (err) console.error('Error deleting file:', err);
+      const student = await Student.findById(id);
+      if (!student) {
+        Object.values(files).flat().forEach(file => {
+          if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        });
+        return res.status(404).json({ success: false, message: 'Student not found' });
+      }
+
+      // Authorization check
+      if (req.userRole === 'AGENT') {
+        const agentIdString = req.userId.toString();
+        const isOwner = student.referredBy?.toString() === agentIdString ||
+          student.agentId?.toString() === agentIdString;
+
+        if (!isOwner) {
+          Object.values(files).flat().forEach(file => {
+            if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
           });
-        } else {
-          console.log("File not found for deletion:", filePath);
+          return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
       }
+
+      const uploadedDocs = {};
+      for (const [fieldName, fileArray] of Object.entries(files)) {
+        const file = fileArray[0];
+
+        // Handle Overwrite
+        if (student.documents && student.documents.has(fieldName)) {
+          const oldRelativePath = student.documents.get(fieldName);
+          const oldFullPath = path.join(process.cwd(), oldRelativePath);
+          try { if (fs.existsSync(oldFullPath)) fs.unlinkSync(oldFullPath); } catch (e) { }
+        }
+
+        const relativePath = moveFileToEntityFolder(file, student, fieldName, 'students');
+
+        if (!student.documents) student.documents = new Map();
+        student.documents.set(fieldName, relativePath);
+        uploadedDocs[fieldName] = relativePath;
+      }
+
+      student.markModified('documents');
+      await student.save();
+
+      // Log audit
+      await AuditService.logUpdate(req.user, 'Student', id, { action: 'bulk_upload_documents', documents: Object.keys(uploadedDocs) }, {}, req);
 
       return res.status(200).json({
         success: true,
-        message: 'Document deleted successfully'
+        message: 'Documents uploaded successfully',
+        data: {
+          student,
+          documents: Object.fromEntries(student.documents)
+        }
       });
     } catch (error) {
-      console.error('Delete my document error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to delete document',
-        error: error.message
-      });
+      if (req.files) {
+        Object.values(req.files).flat().forEach(file => {
+          try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (e) { }
+        });
+      }
+      console.error('Bulk upload student docs error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to upload documents', error: error.message });
     }
   }
 }

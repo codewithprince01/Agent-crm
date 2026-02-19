@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Plus, Copy, Check, PlusCircle } from 'lucide-react';
+import { Search, X, Plus, Copy, Check, PlusCircle, Eye, Pencil, Trash2 } from 'lucide-react';
+import PageHeader from '../../components/layout/PageHeader';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -141,33 +142,37 @@ const StudentList = () => {
     };
 
     return (
-        <div className="p-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+        <div className="p-6">
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Students Management</h1>
-                    <p className="text-gray-600">Manage and monitor all registered students</p>
-                </div>
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Dashboard', link: '/dashboard' },
+                    { label: 'Students List' }
+                ]}
+            />
+
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">Students Management</h1>
                 <button
-                    className="bg-indigo-600 text-white rounded-lg px-6 py-3 font-medium hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg"
+                    className="flex w-full md:w-auto items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition duration-200 cursor-pointer shadow-lg shadow-blue-100"
                     onClick={() => setShowAddModal(true)}
                 >
-                    <Plus size={20} />
-                    Add Student
+                    <Plus size={18} />
+                    <span>Add Student</span>
                 </button>
             </div>
 
             {/* Filters Section */}
-            <div className="bg-white rounded-3xl shadow-sm p-8 mb-8 border border-gray-100">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                     {/* Search Bar */}
                     <div className="md:col-span-5 relative">
                         <div className="relative">
-                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" size={18} />
                             <input
                                 type="text"
                                 placeholder="Search by name, email, id, phone..."
-                                className="w-full pl-14 pr-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium placeholder:text-gray-400 shadow-sm"
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -181,7 +186,7 @@ const StudentList = () => {
                                 <select
                                     value={filterRole}
                                     onChange={(e) => setFilterRole(e.target.value)}
-                                    className="w-full px-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium appearance-none shadow-sm cursor-pointer"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm cursor-pointer"
                                 >
                                     <option value="All">Referrer Role: All</option>
                                     <option value="Agent">Role: Agents</option>
@@ -204,7 +209,7 @@ const StudentList = () => {
                                 placeholder="From Date"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
-                                className="w-full px-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium shadow-sm"
+                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                             />
                         </div>
                     </div>
@@ -217,7 +222,7 @@ const StudentList = () => {
                                 placeholder="To Date"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
-                                className="w-full px-6 py-4 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium shadow-sm"
+                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                             />
                         </div>
                     </div>
@@ -226,16 +231,16 @@ const StudentList = () => {
                     <div className="md:col-span-12 flex justify-end gap-3 mt-6">
                         <button
                             onClick={handleApplyFilters}
-                            className="px-8 py-3 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition-all text-sm shadow-md flex items-center gap-2"
+                            className="px-6 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all text-sm shadow-sm flex items-center gap-2 cursor-pointer"
                         >
-                            <Search size={18} />
-                            Apply filter
+                            <Search size={16} />
+                            Apply
                         </button>
                         <button
                             onClick={clearFilters}
-                            className="px-8 py-3 border-2 border-indigo-600 text-indigo-600 rounded-full font-bold hover:bg-indigo-50 transition-all text-sm"
+                            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm cursor-pointer"
                         >
-                            Clear filter
+                            Clear
                         </button>
                     </div>
                 </div>
@@ -273,7 +278,7 @@ const StudentList = () => {
                         </AlertDialogAction>
                         <AlertDialogAction
                             onClick={handleCreateManually}
-                            className="bg-green-600 hover:bg-green-700"
+                            className="bg-green-600 hover:bg-green-700 cursor-pointer"
                         >
                             Create Manually
                         </AlertDialogAction>
@@ -330,7 +335,7 @@ const StudentList = () => {
                     <p className="text-red-700 font-medium">Error: {error}</p>
                     <button
                         onClick={fetchStudentsData}
-                        className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer"
                     >
                         Retry
                     </button>
@@ -348,7 +353,7 @@ const StudentList = () => {
                     {!searchTerm && (
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700"
+                            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 cursor-pointer"
                         >
                             Add First Student
                         </button>
@@ -358,85 +363,75 @@ const StudentList = () => {
 
             {/* Students Table */}
             {!loading && !error && filteredStudents.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-300">
+                <div className="bg-white rounded-lg shadow overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">S.No.</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Name</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Contact</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Nationality</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Country</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No.</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nationality</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
                                     {(user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN) && (
-                                        <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Referred By</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referred By</th>
                                     )}
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider text-center">Applied</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Registered On</th>
-                                    <th className="p-4 text-left font-semibold text-xs uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Applied</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered On</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredStudents.map((student, index) => (
-                                    <tr key={student._id || student.id} className="border-b border-gray-300 hover:bg-gray-50 transition-colors">
-                                        <td className="p-4">
-                                            <span className="font-semibold text-indigo-600">
-                                                #{(pagination.page - 1) * pagination.limit + index + 1}
-                                            </span>
+                                    <tr key={student._id || student.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            #{(pagination.page - 1) * pagination.limit + index + 1}
                                         </td>
-                                        <td className="p-4">
-                                            <span className="font-semibold text-gray-800">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-medium text-gray-900">
                                                 {student.firstName && student.lastName
                                                     ? `${student.firstName} ${student.lastName}`
                                                     : student.name || 'N/A'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex flex-col gap-1">
-                                                <a className="text-gray-700 text-sm hover:text-indigo-600">
-                                                    {student.email || 'N/A'}
-                                                </a>
-                                                <a className="text-gray-500 text-xs hover:text-indigo-600">
-                                                    {student.mobile || 'N/A'}
-                                                </a>
                                             </div>
                                         </td>
-                                        <td className="p-4">
-                                            <span className="text-gray-600">{student.nationality || 'N/A'}</span>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-900">{student.email || 'N/A'}</div>
+                                            <div className="text-xs text-gray-500">{student.mobile || 'N/A'}</div>
                                         </td>
-                                        <td className="p-4">
-                                            <span className="text-gray-600">{student.country || 'N/A'}</span>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {student.nationality || 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {student.country || 'N/A'}
                                         </td>
                                         {(user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.ADMIN) && (
-                                            <td className="p-4">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col">
-                                                    <span className="text-gray-800 font-medium">
+                                                    <span className="text-sm text-gray-900">
                                                         {student.referredByName || 'Direct'}
                                                     </span>
                                                     {student.referredByRole && student.referredByRole !== 'Direct' && student.referredByRole !== 'N/A' && (
-                                                        <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">
+                                                        <span className="text-xs text-indigo-600">
                                                             {student.referredByRole}
                                                         </span>
                                                     )}
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="p-4">
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <div className="flex items-center justify-center">
                                                 {student.isApplied ? (
-                                                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all min-w-[180px]">
-                                                        <span className="text-gray-700 text-sm font-semibold">
-                                                            Total Applied: {student.applicationCount || 0}
-                                                        </span>
+                                                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-100">
+                                                        <span>{student.applicationCount || 0} Applied</span>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 navigate(`/pending-applications?studentId=${student._id}`);
                                                             }}
-                                                            className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
+                                                            className="p-1 hover:bg-green-100 rounded-full transition-colors"
                                                             title="Add Another Application"
                                                         >
-                                                            <PlusCircle size={16} />
+                                                            <PlusCircle size={14} />
                                                         </button>
                                                     </div>
                                                 ) : (
@@ -445,54 +440,42 @@ const StudentList = () => {
                                                             e.stopPropagation();
                                                             navigate(`/pending-applications?studentId=${student._id}`);
                                                         }}
-                                                        className="px-4 py-2.5 bg-white text-indigo-600 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all flex items-center gap-2 text-sm font-semibold"
+                                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
                                                         title="Apply for Program"
                                                     >
                                                         <PlusCircle size={16} />
-                                                        Apply Now
+                                                        Apply
                                                     </button>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="p-4 whitespace-nowrap">
-                                            <span className="text-gray-600">
-                                                {student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'N/A'}
-                                            </span>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'N/A'}
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex gap-2">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex items-center gap-3">
                                                 <button
                                                     onClick={() => navigate(`/students/${student._id || student.id}`)}
-                                                    className="px-3 py-1.5 border border-blue-300 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                                                    className="text-green-600 hover:text-green-900 transition-colors cursor-pointer"
                                                     title="View Details"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                                    </svg>
-                                                    <span className="sr-only">View</span>
+                                                    <Eye size={18} />
                                                 </button>
 
                                                 <button
                                                     onClick={() => navigate(`/students/${student._id || student.id}/edit`)}
-                                                    className="px-3 py-1.5 border border-green-300 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                                                    className="text-blue-600 hover:text-blue-900 transition-colors cursor-pointer"
                                                     title="Edit"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                                    </svg>
-                                                    <span className="sr-only">Edit</span>
+                                                    <Pencil size={18} />
                                                 </button>
 
                                                 <button
                                                     onClick={() => setDeleteConfirm(student)}
-                                                    className="px-3 py-1.5 border border-red-300 bg-red-50 text-red-700 rounded-lg text-sm font-medium hover:bg-red-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                                                    className="text-red-600 hover:text-red-900 transition-colors cursor-pointer"
                                                     title="Delete"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
-                                                    <span className="sr-only">Delete</span>
+                                                    <Trash2 size={18} />
                                                 </button>
                                             </div>
                                         </td>
@@ -501,21 +484,30 @@ const StudentList = () => {
                             </tbody>
                         </table>
                     </div>
-                </div>
-            )}
-
-            {!loading && !error && filteredStudents.length > 0 && (
-                <div className="flex justify-between items-center bg-white px-6 py-5 rounded-2xl shadow-md border border-gray-300 mt-6">
-                    <div className="text-gray-600 text-sm">
-                        Showing <strong className="text-gray-800 font-semibold">{filteredStudents.length}</strong> of <strong className="text-gray-800 font-semibold">{students.length}</strong> students
-                    </div>
-                    <div className="flex gap-2">
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
-                            Previous
-                        </button>
-                        <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
-                            Next
-                        </button>
+                    
+                    {/* Pagination */}
+                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6">
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm text-gray-700">
+                                Showing <span className="font-medium">{filteredStudents.length}</span> of <span className="font-medium">{students.length}</span> students
+                            </div>
+                            <div className="flex gap-2">
+                                <button 
+                                    className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={pagination.page === 1}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                                >
+                                    Previous
+                                </button>
+                                <button 
+                                    className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={pagination.page >= pagination.totalPages}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

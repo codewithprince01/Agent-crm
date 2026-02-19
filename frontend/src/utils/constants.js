@@ -183,3 +183,12 @@ export const REQUIRED_AGENT_DOCUMENTS = [
   { key: 'companyRegistration', label: 'Company Registration' },
   { key: 'resume', label: 'Resume / CV' }
 ];
+// Required Student Documents
+export const REQUIRED_STUDENT_DOCUMENTS = [
+  { key: 'photo', label: 'Student Photo' },
+  { key: 'idproof', label: 'Identity Proof' },
+  { key: 'marksheet_10', label: '10th Marksheet' },
+  { key: 'marksheet_12', label: '12th Marksheet' },
+  { key: 'resume', label: 'Student Resume' },
+  { key: 'degreecertificate', label: 'Degree Certificate' }
+];
