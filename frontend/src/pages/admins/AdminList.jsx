@@ -269,8 +269,8 @@ const AdminList = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {admin.last_login
-                                                ? new Date(admin.last_login).toLocaleString()
+                                            {admin.lastLogin
+                                                ? new Date(admin.lastLogin).toLocaleString()
                                                 : 'Never'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

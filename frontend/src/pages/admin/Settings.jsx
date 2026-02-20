@@ -63,7 +63,14 @@ const Settings = () => {
         if (!file) return;
 
         try {
-            const response = await uploadService.uploadFile(file);
+            // Mapping for fixed filenames to ensure old files are replaced
+            const renamingMap = {
+                'logo_light': 'light_logo',
+                'logo_dark': 'dark_logo',
+                'site_favicon': 'favicon'
+            };
+            const customName = renamingMap[key] || null;
+            const response = await uploadService.uploadFile(file, customName);
             const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
             const fileUrl = `${apiBase}${response.url}`;
             setSettings(prev => ({ ...prev, [key]: fileUrl }));

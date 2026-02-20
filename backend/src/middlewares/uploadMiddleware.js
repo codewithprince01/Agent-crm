@@ -14,7 +14,37 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        // Create unique filename: fieldname-timestamp.ext
+        // Check if a custom name is provided in the request body
+        // Note: customName must be appended to FormData BEFORE the file
+        if (req.body.customName) {
+            const customBaseName = req.body.customName;
+
+            try {
+                // To ensure true replacement even if extensions differ,
+                // we search and delete any existing files starting with the custom name
+                if (fs.existsSync(uploadDir)) {
+                    const files = fs.readdirSync(uploadDir);
+                    files.forEach(existingFile => {
+                        // Match filename without extension
+                        const baseName = path.parse(existingFile).name;
+                        if (baseName === customBaseName) {
+                            try {
+                                fs.unlinkSync(path.join(uploadDir, existingFile));
+                            } catch (err) {
+                                console.error(`Failed to delete existing file: ${existingFile}`, err);
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Error during file cleanup in uploadMiddleware:', err);
+            }
+
+            const ext = path.extname(file.originalname);
+            return cb(null, customBaseName + ext);
+        }
+
+        // Default unique filename: fieldname-timestamp.ext
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }

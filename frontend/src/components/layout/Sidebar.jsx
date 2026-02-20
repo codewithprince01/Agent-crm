@@ -249,10 +249,12 @@ const Sidebar = ({ isOpen, onClose }) => {
           ) : (
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-black/10">
-                <span className="text-primary-600 font-black text-xl">U</span>
+                <span className="text-primary-600 font-black text-xl">
+                  {settings?.platform_name?.charAt(0).toUpperCase() || "U"}
+                </span>
               </div>
               <h1 style={styles["#custom-h1-class"]} className="text-xl font-black tracking-tight text-white uppercase">
-                UniAdmit
+                {settings?.platform_name}
               </h1>
             </div>
           )}
