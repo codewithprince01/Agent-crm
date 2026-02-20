@@ -248,7 +248,8 @@ class AuthController {
       });
 
       // Handle Documents
-      const documentsBaseDir = path.join(__dirname, '../../uploads/documents/agent');
+      // const documentsBaseDir = path.join(__dirname, '../../uploads/documents/agent');
+      const documentsBaseDir = path.join(__dirname, '../../uploads/documents/agents');
       const safeName = (agent.name).replace(/[^a-z0-9]/gi, '');
       const dateStr = agent.createdAt ? new Date(agent.createdAt).getTime() : Date.now();
       const folderName = `${safeName}_${agent._id}_${dateStr}`;
@@ -273,7 +274,9 @@ class AuthController {
           fs.unlinkSync(file.path);
         }
 
-        const relativePath = `uploads/documents/agent/${folderName}/${newFileName}`;
+        // const relativePath = `uploads/documents/agent/${folderName}/${newFileName}`;
+        const relativePath = `uploads/documents/agents/${folderName}/${newFileName}`;
+
         documentPaths.set(fieldName, relativePath);
       }
 

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { FiMenu, FiBell, FiUser, FiLogOut, FiSettings } from "react-icons/fi";
 import { logout } from "../../store/slices/authSlice";
 import { authService } from "../../services/authService";
+import { ROLES } from '../../utils/constants';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,16 +118,18 @@ const Navbar = ({ onMenuClick }) => {
                   <FiUser className="mr-3" size={16} />
                   Profile
                 </button>
-                <button
-                  onClick={() => {
-                    navigate("/settings");
-                    setShowDropdown(false);
-                  }}
-                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <FiSettings className="mr-3" size={16} />
-                  Settings
-                </button>
+                {user?.role === ROLES.SUPER_ADMIN && (
+                  <button
+                    onClick={() => {
+                      navigate("/settings");
+                      setShowDropdown(false);
+                    }}
+                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <FiSettings className="mr-3" size={16} />
+                    Settings
+                  </button>
+                )}
                 <hr className="my-2 border-gray-200" />
                 <button
                   onClick={handleLogoutConfirm}

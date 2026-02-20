@@ -1,7 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { User, UserCircle2, Home, GraduationCap, MessageSquare, Lock, Edit, ChevronLeft, Globe, MapPin, Phone, Mail, Calendar, FileText, CheckCircle2 } from 'lucide-react';
+import { User, UserCircle2, Home, GraduationCap, MessageSquare, Lock, Edit, ChevronLeft, Globe, MapPin, Phone, Mail, Calendar, FileText, CheckCircle2, LogOut, KeyRound } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { logout } from '../../store/slices/authSlice';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../components/ui/alert-dialog';
 import studentService from '../../services/studentService';
 import agentService from '../../services/agentService';
 import { REQUIRED_STUDENT_DOCUMENTS, ROLES } from '../../utils/constants';
@@ -26,7 +38,15 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
   const [selectedApp, setSelectedApp] = useState(null);
   const [missingDocs, setMissingDocs] = useState([]);
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const isAdmin = [ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(user?.role);
+  const isStudent = user?.role === 'student' || user?.role === ROLES.STUDENT;
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
 
   const [studentData, setStudentData] = useState({
     firstName: "",
@@ -389,28 +409,52 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
                   </div>
                 </div>
 
-                {/* Referral Information Section */}
+                {/* Sidebar Actions: Referral Info (Admin/Agent) OR Student Actions (Student) */}
                 <div className="mt-8 pt-6 border-t border-gray-200">
-                  <div>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[13px] text-gray-400 font-bold uppercase tracking-wider">Referrer Name</span>
-                      <span className="text-sm text-gray-900 font-bold flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                        {referrerName}
-                        {referrerRole && (
-                          <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 ml-1">
-                            {referrerRole}
-                          </span>
-                        )}
-                      </span>
+                  {isStudent ? (
+                    <div className="flex flex-col gap-3">
+                      <button
+                        onClick={() => navigate('/change-password')}
+                        className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:text-blue-600 transition-all font-semibold shadow-sm group"
+                      >
+                        <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                          <KeyRound className="w-4 h-4" />
+                        </div>
+                        Change Password
+                      </button>
+
+                      <button
+                        onClick={() => setLogoutConfirm(true)}
+                        className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-red-100 text-red-600 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all font-semibold shadow-sm group"
+                      >
+                        <div className="p-2 bg-red-50 rounded-lg group-hover:bg-red-100 transition-colors">
+                          <LogOut className="w-4 h-4" />
+                        </div>
+                        Logout
+                      </button>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-gray-50 flex flex-col gap-2">
-                      <span className="text-[13px] text-gray-400 font-bold uppercase tracking-wider">Referral ID</span>
-                      <span className="text-[13px] text-blue-600 font-mono break-all bg-blue-50/50 p-2.5 rounded-xl border border-blue-100/50 block">
-                        {studentData.referredBy || "DIRECT_ENTRY"}
-                      </span>
+                  ) : (
+                    <div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[13px] text-gray-400 font-bold uppercase tracking-wider">Referrer Name</span>
+                        <span className="text-sm text-gray-900 font-bold flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                          {referrerName}
+                          {referrerRole && (
+                            <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 ml-1">
+                              {referrerRole}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-gray-50 flex flex-col gap-2">
+                        <span className="text-[13px] text-gray-400 font-bold uppercase tracking-wider">Referral ID</span>
+                        <span className="text-[13px] text-blue-600 font-mono break-all bg-blue-50/50 p-2.5 rounded-xl border border-blue-100/50 block">
+                          {studentData.referredBy || "DIRECT_ENTRY"}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {!explicitId && (
@@ -813,6 +857,27 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
         onClose={() => setSelectedApp(null)}
         application={selectedApp}
       />
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={logoutConfirm} onOpenChange={setLogoutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+            >
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
