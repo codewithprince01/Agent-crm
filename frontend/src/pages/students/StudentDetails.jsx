@@ -243,27 +243,32 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
 
   return (
     <>
-      {!explicitId && (
-        <div className="p-6 pb-0">
-          <PageHeader
-            breadcrumbs={[
-              { label: 'Dashboard', link: '/dashboard' },
-              { label: 'Students List', link: '/students' },
-              { label: 'Student Details' }
-            ]}
-          />
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
-            <h1 className="text-2xl font-bold text-gray-800">
-              Student Details: {studentData.personalDetails?.firstName || ''} {studentData.personalDetails?.lastName || ''}
-            </h1>
-            <div className="flex gap-2">
-              <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider h-fit">
-                Active Profile
-              </span>
-            </div>
+      <div className="p-6 pb-0">
+        <PageHeader
+          breadcrumbs={
+            isStudent
+              ? [
+                { label: 'Dashboard', link: '/dashboard' },
+                { label: 'My Profile' }
+              ]
+              : [
+                { label: 'Dashboard', link: '/dashboard' },
+                { label: 'Students List', link: '/students' },
+                { label: 'Student Details' }
+              ]
+          }
+        />
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Student Details: {studentData.personalDetails?.firstName || ''} {studentData.personalDetails?.lastName || ''}
+          </h1>
+          <div className="flex gap-2">
+            <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider h-fit">
+              Active Profile
+            </span>
           </div>
         </div>
-      )}
+      </div>
       {/* Top Section - Navigation Pills (Outside max-w container for proper sticky) */}
       <div className="sticky top-[64px] z-40 bg-gray-50/95 backdrop-blur-md py-4 transition-all border-b border-gray-200 shadow-sm w-full px-4 md:px-8">
         <div className="flex flex-nowrap gap-4 md:justify-center justify-start overflow-x-auto pb-2 no-scrollbar w-full">
