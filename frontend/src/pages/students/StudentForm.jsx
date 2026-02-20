@@ -92,6 +92,7 @@ const StudentForm = () => {
         if (isEditMode) {
           setLoading(true);
           await fetchStudentData();
+          setLoading(false);
         } else if (user) {
           setFormData(prev => ({
             ...prev,
@@ -127,11 +128,11 @@ const StudentForm = () => {
           c_code: student.countryCode || student.c_code || '',
           father: student.fatherName || student.father || '',
           mother: student.motherName || student.mother || '',
-          dob: student.dateOfBirth ? student.dateOfBirth.split('T')[0] : (student.dob ? student.dob.split('T')[0] : ''),
+          dob: typeof student.dateOfBirth === 'string' ? student.dateOfBirth.split('T')[0] : (typeof student.dob === 'string' ? student.dob.split('T')[0] : ''),
           first_language: student.firstLanguage || student.first_language || '',
           nationality: student.nationality || '',
           passport_number: student.passportNumber || student.passport_number || '',
-          passport_expiry: student.passportExpiry ? student.passportExpiry.split('T')[0] : (student.passport_expiry ? student.passport_expiry.split('T')[0] : ''),
+          passport_expiry: typeof student.passportExpiry === 'string' ? student.passportExpiry.split('T')[0] : (typeof student.passport_expiry === 'string' ? student.passport_expiry.split('T')[0] : ''),
           marital_status: student.maritalStatus || student.marital_status || '',
           gender: student.gender || '',
           home_address: student.address || student.home_address || '',
@@ -148,7 +149,7 @@ const StudentForm = () => {
           grade_average: student.gradeAverage || student.grade_average || '',
           // Test Scores
           exam_type: student.examType || student.exam_type || '',
-          exam_date: student.examDate ? student.examDate.split('T')[0] : (student.exam_date ? student.exam_date.split('T')[0] : ''),
+          exam_date: typeof student.examDate === 'string' ? student.examDate.split('T')[0] : (typeof student.exam_date === 'string' ? student.exam_date.split('T')[0] : ''),
           listening_score: student.listeningScore || student.listening_score || '',
           reading_score: student.readingScore || student.reading_score || '',
           writing_score: student.writingScore || student.writing_score || '',

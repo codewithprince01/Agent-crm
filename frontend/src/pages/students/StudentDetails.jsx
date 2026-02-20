@@ -19,6 +19,7 @@ import agentService from '../../services/agentService';
 import { REQUIRED_STUDENT_DOCUMENTS, ROLES } from '../../utils/constants';
 import StudentDocumentUpload from '../../components/students/StudentDocumentUpload';
 import ProgramDetailsModal from '../../components/students/ProgramDetailsModal';
+import PageHeader from '../../components/layout/PageHeader';
 import { AlertCircle, Shield, ExternalLink, Download, Trash2, Loader2, Save, CheckCircle2 as CheckCircle } from 'lucide-react';
 
 const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
@@ -218,33 +219,6 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
     ref.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const [qualifications, setQualifications] = useState({
-    gre: false,
-    gmat: false,
-    sat: false,
-  });
-
-  const toggle = (key) => {
-    setQualifications((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  // Static country data
-  const countriesData = [
-    { code: "IN", name: "INDIA" },
-    { code: "US", name: "UNITED STATES" },
-    { code: "GB", name: "UNITED KINGDOM" },
-    { code: "CA", name: "CANADA" },
-    { code: "AU", name: "AUSTRALIA" },
-  ];
-
-  const phoneCode = [
-    { phonecode: "1" },
-    { phonecode: "7" },
-    { phonecode: "44" },
-    { phonecode: "61" },
-    { phonecode: "91" },
-  ];
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-100">
@@ -270,17 +244,20 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
   return (
     <>
       {!explicitId && (
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => navigate('/students')}
-              className="flex items-center gap-2 group text-gray-600 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100"
-            >
-              <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-              Back to Student List
-            </button>
+        <div className="p-6 pb-0">
+          <PageHeader
+            breadcrumbs={[
+              { label: 'Dashboard', link: '/dashboard' },
+              { label: 'Students List', link: '/students' },
+              { label: 'Student Details' }
+            ]}
+          />
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Student Details: {studentData.personalDetails?.firstName || ''} {studentData.personalDetails?.lastName || ''}
+            </h1>
             <div className="flex gap-2">
-              <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider">
+              <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-wider h-fit">
                 Active Profile
               </span>
             </div>
@@ -599,17 +576,13 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
                   </div>
 
                   <div className="mt-10 pt-6 border-t border-gray-100 bg-gray-50/30 -mx-8 px-8 pb-4 rounded-b-2xl">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center sm:text-left">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-center sm:text-left">
                       <div>
                         <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Status</label>
                         <div className="text-xs font-bold text-gray-700 uppercase flex items-center justify-center sm:justify-start gap-1.5">
                           <div className={`w-2 h-2 rounded-full ${studentData.status === 'active' ? 'bg-green-500' : 'bg-gray-400'} shadow-sm`}></div>
                           {studentData.status || "N/A"}
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Profile Step</label>
-                        <div className="text-xs font-bold text-gray-700">{studentData.currentStep} of 4</div>
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Last Updated</label>
@@ -824,6 +797,7 @@ const StudentDetails = ({ studentId: explicitId, forceReadOnly = false }) => {
                             <button
                               onClick={() => setSelectedApp(app)}
                               className="text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest flex items-center gap-1"
+                              style={{ cursor: 'pointer' }}
                             >
                               View Details
                               <Globe className="w-3 h-3" />
